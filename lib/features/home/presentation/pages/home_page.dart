@@ -9,6 +9,7 @@ import '../../../../shared/navigation/app_router.dart';
 import '../widgets/home_stats_card.dart';
 import '../widgets/recent_points_list.dart';
 import '../widgets/quick_actions_grid.dart';
+import '../../../../simple_map_test.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -155,7 +156,85 @@ class _HomePageState extends State<HomePage> {
                         points: _recentPoints,
                         onPointTap: _handlePointTap,
                       ),
-                    ],
+
+                        // Test Buttons
+                        const SizedBox(height: 20),
+                        _buildSectionTitle('API Tests', Icons.bug_report),
+                        const SizedBox(height: 12),
+
+                        // Google Maps Test Button
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF4CAF50), Color(0xFF8BC34A)],
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                offset: const Offset(0, 4),
+                                blurRadius: 8,
+                              ),
+                            ],
+                          ),
+                          child: InkWell(
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => const SimpleMapTest()),
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(
+                                    Icons.map_outlined,
+                                    color: Colors.white,
+                                    size: 24,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                const Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Test Google Maps API',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      Text(
+                                        'Direct API Key verification test',
+                                        style: TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Icon(
+                                  Icons.arrow_forward_ios,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
                   ),
                 ),
               ),
@@ -406,12 +485,7 @@ class _HomePageState extends State<HomePage> {
           _buildBottomNavButton(
             icon: Icons.location_on_rounded,
             label: l10n.savedPoints,
-            onTap: () {
-              // Navigate to saved points
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Opening saved points...')),
-              );
-            },
+            onTap: () => AppRouter.navigateToSavedPoints(context),
           ),
 
           // Settings Button

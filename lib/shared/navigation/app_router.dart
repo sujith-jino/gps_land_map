@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/camera/presentation/pages/camera_page.dart';
 import '../../features/map/presentation/pages/map_page.dart';
+import '../../features/map/presentation/pages/saved_points_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
 
 
@@ -9,6 +10,7 @@ class AppRouter {
   static const String home = '/';
   static const String camera = '/camera';
   static const String map = '/map';
+  static const String savedPoints = '/saved-points';
   static const String testMap = '/test-map';
   static const String settings = '/settings';
   static const String landPointDetails = '/land-point-details';
@@ -28,6 +30,10 @@ class AppRouter {
       case '/map':
         return MaterialPageRoute(
           builder: (_) => const MapPage(),
+        );
+      case '/saved-points':
+        return MaterialPageRoute(
+          builder: (_) => const SavedPointsPage(),
         );
 
       case '/settings':
@@ -76,6 +82,11 @@ class AppRouter {
   /// Navigate to the map page
   static Future<void> navigateToMap(BuildContext context) async {
     await Navigator.pushNamed(context, map);
+  }
+
+  /// Navigate to the saved points page
+  static Future<void> navigateToSavedPoints(BuildContext context) async {
+    await Navigator.pushNamed(context, savedPoints);
   }
 
   /// Navigate to the test map page

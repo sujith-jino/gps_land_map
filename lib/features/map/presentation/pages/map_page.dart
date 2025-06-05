@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'dart:async';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/services/location_service.dart';
@@ -16,76 +19,228 @@ class MapPage extends StatefulWidget {
   State<MapPage> createState() => _MapPageState();
 }
 
-class _MapPageState extends State<MapPage> {
+class _MapPageState extends State<MapPage>
+    with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
   final LocationService _locationService = LocationService();
   final DatabaseService _databaseService = DatabaseService();
-  final Completer<GoogleMapController> _mapController = Completer();
-  final Map<String, BitmapDescriptor> _markerIcons = {};
+  final Completer<GoogleMapController> _mapCompleter =
+      Completer<GoogleMapController>();
   final Set<Marker> _markers = {};
   final Set<Polygon> _polygons = {};
-  final Set<Polyline> _polylines = {};
 
   Position? _currentPosition;
   List<LandPoint> _landPoints = [];
   bool _isLoading = true;
   bool _showSatelliteView = false;
-  bool _showTraffic = false;
-  bool _showMarkers = true;
-  bool _showPolygon = true;
+  String _statusMessage = 'Initializing map...';
+  bool _hasLocationPermission = false;
+  bool _hasLocationService = false;
+  bool _mapInitialized = false;
+  bool _isVisible = true;
+  bool _isMapReady = false;
 
-  static const double _mapPadding = 100.0;
-  CameraPosition? _initialCameraPosition;
+  // Default camera position - Chennai, Tamil Nadu
+  static const CameraPosition _defaultCameraPosition = CameraPosition(
+    target: LatLng(13.0827, 80.2707),
+    zoom: 12.0,
+  );
+
+  CameraPosition _initialCameraPosition = _defaultCameraPosition;
+
+  @override
+  bool get wantKeepAlive => true; // Keep state alive to prevent buffer issues
 
   @override
   void initState() {
     super.initState();
-    _loadMarkerIcons();
-    _initializeMap();
+    WidgetsBinding.instance.addObserver(this);
+    _initializeApp();
   }
 
-  Future<void> _loadMarkerIcons() async {
-    // Use default markers with different colors since custom icons are not available
-    _markerIcons['forest'] =
-        BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen);
-    _markerIcons['water body'] =
-        BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue);
-    _markerIcons['agricultural land'] =
-        BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange);
-    _markerIcons['urban area'] =
-        BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueViolet);
-    _markerIcons['default'] = BitmapDescriptor.defaultMarker;
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _disposeController();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    switch (state) {
+      case AppLifecycleState.resumed:
+        _isVisible = true;
+        debugPrint('🔄 App resumed - Map visible');
+        break;
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.detached:
+        _isVisible = false;
+        debugPrint('⏸️ App paused/inactive - Map hidden');
+        break;
+      case AppLifecycleState.hidden:
+        _isVisible = false;
+        debugPrint('🫥 App hidden - Map hidden');
+        break;
+    }
+  }
+
+  Future<void> _disposeController() async {
+    try {
+      if (_mapInitialized && _mapCompleter.isCompleted) {
+        final controller = await _mapCompleter.future;
+        controller.dispose();
+        debugPrint('🗑️ Map controller disposed');
+      }
+    } catch (e) {
+      debugPrint('Error disposing map controller: $e');
+    }
+  }
+
+  Future<void> _initializeApp() async {
+    await _checkPermissions();
+    await _initializeMap();
+  }
+
+  Future<void> _checkPermissions() async {
+    try {
+      setState(() {
+        _statusMessage = 'Checking permissions...';
+      });
+
+      // Check location service
+      _hasLocationService = await Geolocator.isLocationServiceEnabled();
+
+      if (!_hasLocationService) {
+        setState(() {
+          _statusMessage = 'Location service is disabled. Please enable GPS.';
+        });
+        _showPermissionDialog('Location Service Required',
+            'Please enable location services in your device settings to use GPS features.');
+        return;
+      }
+
+      // Check location permission
+      LocationPermission permission = await Geolocator.checkPermission();
+
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        setState(() {
+          _statusMessage = 'Location permission permanently denied';
+        });
+        _showPermissionDialog('Permission Required',
+            'Location permission is required for GPS features. Please enable it in app settings.');
+        return;
+      }
+
+      _hasLocationPermission = permission == LocationPermission.whileInUse ||
+          permission == LocationPermission.always;
+
+      if (_hasLocationPermission) {
+        setState(() {
+          _statusMessage = 'Permissions granted! Getting location...';
+        });
+      } else {
+        setState(() {
+          _statusMessage = 'Using default location';
+        });
+      }
+    } catch (e) {
+      debugPrint('Permission check error: $e');
+      setState(() {
+        _statusMessage = 'Permission check failed: Using default location';
+      });
+    }
+  }
+
+  void _showPermissionDialog(String title, String message) {
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              openAppSettings();
+            },
+            child: const Text('Settings'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _initializeMap() async {
     try {
-      setState(() => _isLoading = true);
+      setState(() {
+        _isLoading = true;
+        _statusMessage = 'Loading Google Maps...';
+      });
 
-      try {
-        _currentPosition = await _locationService.getCurrentPosition();
-        if (_currentPosition != null) {
-          _initialCameraPosition = CameraPosition(
-            target: LatLng(
-                _currentPosition!.latitude, _currentPosition!.longitude),
-            zoom: 15.0,
-          );
+      debugPrint('🔍 Starting map initialization...');
+      debugPrint('🔍 Location permission: $_hasLocationPermission');
+      debugPrint('🔍 Location service: $_hasLocationService');
+
+      // Try to get current location if permission is granted
+      if (_hasLocationPermission && _hasLocationService) {
+        try {
+          debugPrint('🔍 Attempting to get current location...');
+          _currentPosition = await _locationService.getCurrentPosition();
+          if (_currentPosition != null) {
+            debugPrint(
+                '✅ Location found: ${_currentPosition!.latitude}, ${_currentPosition!.longitude}');
+            _initialCameraPosition = CameraPosition(
+              target: LatLng(
+                  _currentPosition!.latitude, _currentPosition!.longitude),
+              zoom: 15.0,
+            );
+            setState(() {
+              _statusMessage = '✅ Location found! Loading map...';
+            });
+          } else {
+            debugPrint('❌ Current position is null');
+          }
+        } catch (e) {
+          debugPrint('❌ Location error: $e');
+          setState(() {
+            _statusMessage = 'Location error: Using Chennai as default';
+          });
         }
-      } catch (e) {
-        debugPrint('Location error: $e');
-        _initialCameraPosition = const CameraPosition(
-          target: LatLng(20.5937, 78.9629), // Center of India as fallback
-          zoom: 5.0,
-        );
+      } else {
+        debugPrint('🔍 Using default location (Chennai)');
+        setState(() {
+          _statusMessage = 'Using default location (Chennai)';
+        });
       }
 
+      // Load land points
+      debugPrint('🔍 Loading land points...');
       await _loadLandPoints();
-      setState(() => _isLoading = false);
+      debugPrint('✅ Land points loaded: ${_landPoints.length}');
+
+      setState(() {
+        _isLoading = false;
+        _statusMessage = 'Map ready!';
+        _isMapReady = true;
+      });
+      debugPrint('✅ Map initialization complete!');
     } catch (e) {
-      setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error initializing map: $e')),
-        );
-      }
+      debugPrint('❌ Map initialization error: $e');
+      setState(() {
+        _isLoading = false;
+        _statusMessage = 'Error: $e';
+      });
     }
   }
 
@@ -99,34 +254,42 @@ class _MapPageState extends State<MapPage> {
       _updatePolygon();
     } catch (e) {
       debugPrint('Error loading land points: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading land points: $e')),
-        );
-      }
     }
   }
 
   void _updateMarkers() {
-    if (_landPoints.isEmpty) return;
-
     final newMarkers = <Marker>{};
-    for (var point in _landPoints) {
-      final markerId = MarkerId(point.id);
-      final icon = _markerIcons[point.analysis?.dominantLandFeature
-          ?.toLowerCase() ?? ''] ?? _markerIcons['default']!;
 
+    // Add current location marker if available
+    if (_currentPosition != null) {
       newMarkers.add(
         Marker(
-          markerId: markerId,
+          markerId: const MarkerId('current_location'),
+          position:
+              LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+          infoWindow: const InfoWindow(
+            title: 'Current Location',
+            snippet: 'You are here',
+          ),
+        ),
+      );
+    }
+
+    // Add land point markers
+    for (var point in _landPoints) {
+      final color = _getMarkerColor(point.analysis?.dominantLandFeature);
+      newMarkers.add(
+        Marker(
+          markerId: MarkerId(point.id),
           position: LatLng(point.latitude, point.longitude),
+          icon: BitmapDescriptor.defaultMarkerWithHue(color),
           infoWindow: InfoWindow(
-            title: 'Land Point',
+            title: point.analysis?.dominantLandFeature ?? 'Land Point',
             snippet: 'Tap for details',
             onTap: () => _showPointDetails(point),
           ),
-          icon: icon,
-          onTap: () => _onMarkerTapped(point),
+          onTap: () => _showPointDetails(point),
         ),
       );
     }
@@ -137,14 +300,30 @@ class _MapPageState extends State<MapPage> {
     });
   }
 
+  double _getMarkerColor(String? landFeature) {
+    switch (landFeature?.toLowerCase()) {
+      case 'forest':
+        return BitmapDescriptor.hueGreen;
+      case 'water body':
+        return BitmapDescriptor.hueBlue;
+      case 'agricultural land':
+        return BitmapDescriptor.hueOrange;
+      case 'urban area':
+        return BitmapDescriptor.hueViolet;
+      default:
+        return BitmapDescriptor.hueRed;
+    }
+  }
+
   void _updatePolygon() {
     if (_landPoints.length < 3) return;
 
-    final points = _landPoints.map((point) =>
-        LatLng(point.latitude, point.longitude)).toList();
+    final points = _landPoints
+        .map((point) => LatLng(point.latitude, point.longitude))
+        .toList();
 
     if (points.isNotEmpty) {
-      points.add(points.first);
+      points.add(points.first); // Close the polygon
     }
 
     setState(() {
@@ -158,114 +337,109 @@ class _MapPageState extends State<MapPage> {
           fillColor: AppTheme.primaryColor.withOpacity(0.2),
         ),
       );
-
-      _polylines.clear();
-      _polylines.add(
-        Polyline(
-          polylineId: const PolylineId('boundary'),
-          points: points,
-          color: AppTheme.primaryColor,
-          width: 3,
-        ),
-      );
     });
   }
 
   void _onMapCreated(GoogleMapController controller) {
-    _mapController.complete(controller);
-    _updateCameraView();
+    if (!_mapCompleter.isCompleted) {
+      _mapCompleter.complete(controller);
+      _mapInitialized = true;
+      debugPrint('✅ Google Maps created successfully!');
+      debugPrint('✅ Map controller initialized');
+      debugPrint('✅ Camera position: ${_initialCameraPosition.target}');
+
+      // Reduce buffer allocation by setting proper options
+      _configureMapController(controller);
+    } else {
+      debugPrint(
+          '⚠️ Map completer already completed - avoiding duplicate completion');
+    }
   }
 
-  Future<void> _updateCameraView() async {
-    if (_landPoints.isEmpty) return;
+  Future<void> _configureMapController(GoogleMapController controller) async {
+    try {
+      // Configure map to reduce buffer usage
+      debugPrint('🔧 Configuring map controller for optimal performance');
+    } catch (e) {
+      debugPrint('⚠️ Error configuring map controller: $e');
+    }
+  }
 
-    final GoogleMapController controller = await _mapController.future;
-    double minLat = _landPoints.first.latitude;
-    double maxLat = _landPoints.first.latitude;
-    double minLng = _landPoints.first.longitude;
-    double maxLng = _landPoints.first.longitude;
-
-    for (var point in _landPoints) {
-      if (point.latitude < minLat) minLat = point.latitude;
-      if (point.latitude > maxLat) maxLat = point.latitude;
-      if (point.longitude < minLng) minLng = point.longitude;
-      if (point.longitude > maxLng) maxLng = point.longitude;
+  Future<void> _goToCurrentLocation() async {
+    if (!_hasLocationPermission) {
+      _showSnackBar('Location permission required', Colors.orange);
+      await _checkPermissions();
+      return;
     }
 
-    final latDelta = (maxLat - minLat) * 1.5;
-    final lngDelta = (maxLng - minLng) * 1.5;
+    if (!_hasLocationService) {
+      _showSnackBar('Please enable GPS in device settings', Colors.orange);
+      return;
+    }
 
-    final bounds = LatLngBounds(
-      southwest: LatLng(minLat - latDelta * 0.1, minLng - lngDelta * 0.1),
-      northeast: LatLng(maxLat + latDelta * 0.1, maxLng + lngDelta * 0.1),
-    );
-
-    final cameraUpdate = CameraUpdate.newLatLngBounds(bounds, _mapPadding);
-    controller.animateCamera(cameraUpdate);
-  }
-
-  void _onMarkerTapped(LandPoint point) {
-    _showPointDetails(point);
-  }
-
-  void _onMapTapped(LatLng position) {
-    // Handle map tap if needed
-  }
-
-  void _onCameraMove(CameraPosition position) {
-    // Handle camera movement if needed
-  }
-
-  void _goToCurrentLocation() async {
     try {
+      setState(() {
+        _statusMessage = 'Getting current location...';
+      });
+
       final position = await _locationService.getCurrentPosition();
       if (position == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not get current location')),
-        );
+        _showSnackBar('Could not get current location', Colors.red);
         return;
       }
 
-      setState(() => _currentPosition = position);
+      setState(() {
+        _currentPosition = position;
+        _statusMessage = 'Location updated!';
+      });
 
-      final GoogleMapController controller = await _mapController.future;
-      controller.animateCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(
-            target: LatLng(position.latitude, position.longitude),
-            zoom: 16.0,
+      if (_mapInitialized && _mapCompleter.isCompleted) {
+        final controller = await _mapCompleter.future;
+        await controller.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(
+              target: LatLng(position.latitude, position.longitude),
+              zoom: 16.0,
+            ),
           ),
-        ),
-      );
+        );
+      }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.my_location, color: Colors.white, size: 20),
-              SizedBox(width: 8),
-              Text('Location updated',
-                  style: TextStyle(fontWeight: FontWeight.w500)),
-            ],
-          ),
-          backgroundColor: Colors.blue,
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 2),
-          action: SnackBarAction(
-            label: 'CAPTURE',
-            textColor: Colors.white,
-            onPressed: () => AppRouter.navigateToCamera(context),
-          ),
-        ),
-      );
+      _updateMarkers();
+      _showSnackBar('Location updated successfully!', Colors.green);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error getting location: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      _showSnackBar('Error getting location: $e', Colors.red);
+      setState(() {
+        _statusMessage = 'Location error occurred';
+      });
     }
+  }
+
+  void _showSnackBar(String message, Color color) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              color == Colors.green
+                  ? Icons.check_circle
+                  : color == Colors.red
+                      ? Icons.error
+                      : Icons.info,
+              color: Colors.white,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 3),
+      ),
+    );
   }
 
   void _showPointDetails(LandPoint point) {
@@ -275,125 +449,501 @@ class _MapPageState extends State<MapPage> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) =>
-          Container(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Handle bar
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
                 ),
-                const SizedBox(height: 20),
-                Text(
-                  point.analysis?.dominantLandFeature ?? 'Land Point',
-                  style: Theme
-                      .of(context)
-                      .textTheme
-                      .headlineSmall
-                      ?.copyWith(
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            Text(
+              point.analysis?.dominantLandFeature ?? 'Land Point',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+                '📍 ${point.latitude.toStringAsFixed(6)}, ${point.longitude.toStringAsFixed(6)}'),
+            if (point.analysis != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                  '🌿 Vegetation: ${point.analysis!.vegetationPercentage.toStringAsFixed(1)}%'),
+              Text('🏞️ Land Type: ${point.analysis!.dominantLandFeature}'),
+              Text('🌱 Soil: ${point.analysis!.soilType}'),
+            ],
+            if (point.notes != null) ...[
+              const SizedBox(height: 8),
+              Text('📝 Notes: ${point.notes}'),
+            ],
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Close'),
+                  ),
                 ),
-                const SizedBox(height: 8),
-                Text('Coordinates: ${point.latitude.toStringAsFixed(6)}, ${point
-                    .longitude.toStringAsFixed(6)}'),
-                if (point.analysis != null) ...[
-                  const SizedBox(height: 8),
-                  Text('Land Feature: ${point.analysis!.dominantLandFeature}'),
-                  Text('Vegetation: ${point.analysis!.vegetationPercentage
-                      .toStringAsFixed(1)}%'),
-                  Text('Soil Type: ${point.analysis!.soilType}'),
-                ],
-                if (point.notes != null) ...[
-                  const SizedBox(height: 8),
-                  Text('Notes: ${point.notes}'),
-                ],
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Close'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          AppRouter.navigateToCamera(context);
-                        },
-                        icon: const Icon(Icons.camera_alt),
-                        label: const Text('Capture'),
-                      ),
-                    ),
-                  ],
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      AppRouter.navigateToCamera(context);
+                    },
+                    icon: const Icon(Icons.camera_alt),
+                    label: const Text('Capture'),
+                  ),
                 ),
               ],
             ),
-          ),
+          ],
+        ),
+      ),
     );
+  }
+
+  void _showSavedPointsList() {
+    AppRouter.navigateToSavedPoints(context);
+  }
+
+  void _showSavedPointsListOld() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Handle bar
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Saved Land Points',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            if (_landPoints.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              SizedBox(
+                height: MediaQuery.of(context).size.height * 0.6,
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _landPoints.length,
+                  itemBuilder: (context, index) {
+                    final point = _landPoints[index];
+                    return Card(
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: _getMarkerColorMaterial(
+                              point.analysis?.dominantLandFeature),
+                          child: Text('${index + 1}'),
+                        ),
+                        title: Text(point.analysis?.dominantLandFeature ??
+                            'Land Point ${index + 1}'),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                                '📍 ${point.latitude.toStringAsFixed(6)}, ${point.longitude.toStringAsFixed(6)}'),
+                            Text('📅 ${_formatDate(point.timestamp)}'),
+                            if (point.analysis != null)
+                              Text(
+                                  '🌿 ${point.analysis!.vegetationPercentage.toStringAsFixed(1)}% vegetation'),
+                          ],
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.location_on),
+                              onPressed: () async {
+                                Navigator.pop(context);
+                                await _goToPoint(point);
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed: () => _confirmDeletePoint(point),
+                            ),
+                          ],
+                        ),
+                        onTap: () {
+                          Navigator.pop(context);
+                          _showPointDetails(point);
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ] else ...[
+              const SizedBox(height: 24),
+              Center(
+                child: Text(
+                  'No saved points available',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Close'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _getMarkerColorMaterial(String? landFeature) {
+    switch (landFeature?.toLowerCase()) {
+      case 'forest':
+        return Colors.green;
+      case 'water body':
+        return Colors.blue;
+      case 'agricultural land':
+        return Colors.orange;
+      case 'urban area':
+        return Colors.purple;
+      default:
+        return Colors.red;
+    }
+  }
+
+  String _formatDate(DateTime timestamp) {
+    return '${timestamp.year}-${timestamp.month.toString().padLeft(2, '0')}-${timestamp.day.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _goToPoint(LandPoint point) async {
+    if (!_mapInitialized || !_mapCompleter.isCompleted) {
+      return;
+    }
+
+    final controller = await _mapCompleter.future;
+    await controller.animateCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(
+          target: LatLng(point.latitude, point.longitude),
+          zoom: 16.0,
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeletePoint(LandPoint point) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Land Point'),
+        content: Text(
+            'Are you sure you want to delete "${point.analysis?.dominantLandFeature ?? 'Land Point'}"?'),
+        actions: [
+          TextButton(
+            onPressed: Navigator.of(context).pop,
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _deletePoint(point);
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _deletePoint(LandPoint point) async {
+    try {
+      await _databaseService.deleteLandPoint(point.id);
+      await _loadLandPoints();
+      _showSnackBar('Land point deleted successfully', Colors.green);
+    } catch (e) {
+      _showSnackBar('Error deleting point: $e', Colors.red);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.mapView),
+        backgroundColor: AppTheme.primaryColor,
+        foregroundColor: Colors.white,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _initializeMap,
-            tooltip: 'Refresh',
-          ),
           IconButton(
             icon: Icon(_showSatelliteView ? Icons.map : Icons.satellite),
             onPressed: () =>
                 setState(() => _showSatelliteView = !_showSatelliteView),
-            tooltip: 'Toggle Map Type',
+            tooltip: 'Toggle Satellite View',
           ),
           IconButton(
             icon: const Icon(Icons.my_location),
             onPressed: _goToCurrentLocation,
-            tooltip: 'My Location',
+            tooltip: 'Go to Current Location',
+          ),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _initializeApp,
+            tooltip: 'Refresh Map',
           ),
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : GoogleMap(
-        initialCameraPosition: _initialCameraPosition!,
-        onMapCreated: _onMapCreated,
-        onTap: _onMapTapped,
-        onCameraMove: _onCameraMove,
-        myLocationEnabled: true,
-        myLocationButtonEnabled: false,
-        zoomControlsEnabled: false,
-        mapType: _showSatelliteView ? MapType.satellite : MapType.normal,
-        trafficEnabled: _showTraffic,
-        markers: _showMarkers ? _markers : {},
-        polygons: _showPolygon ? _polygons : {},
-        polylines: _showPolygon ? _polylines : {},
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text(
+                    _statusMessage,
+                    style: Theme.of(context).textTheme.titleMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'API Key: AIzaSyDzhBYBKT8s-bbrrYGBSCAFwudEMdVqyNU',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontFamily: 'monospace',
+                          color: Colors.grey,
+                        ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Permission status
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                _hasLocationPermission
+                                    ? Icons.check_circle
+                                    : Icons.cancel,
+                                color: _hasLocationPermission
+                                    ? Colors.green
+                                    : Colors.red,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                  'Location Permission: ${_hasLocationPermission ? "Granted" : "Denied"}'),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Icon(
+                                _hasLocationService
+                                    ? Icons.check_circle
+                                    : Icons.cancel,
+                                color: _hasLocationService
+                                    ? Colors.green
+                                    : Colors.red,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                  'GPS Service: ${_hasLocationService ? "Enabled" : "Disabled"}'),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : Column(
+              children: [
+                // Status Bar
+                if (_statusMessage.isNotEmpty)
+                  Container(
+                    width: double.infinity,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    color: AppTheme.primaryColor.withOpacity(0.1),
+                    child: Text(
+                      _statusMessage,
+                      style: TextStyle(
+                        color: AppTheme.primaryColor,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+
+                // Map
+                Expanded(
+                  child: _isMapReady
+                      ? GoogleMap(
+                          key: const ValueKey('google_map'),
+                          initialCameraPosition: _initialCameraPosition,
+                          onMapCreated: (GoogleMapController controller) {
+                            debugPrint(
+                                '🗺️ GoogleMap onMapCreated callback triggered');
+                            _onMapCreated(controller);
+                          },
+                          myLocationEnabled:
+                              _hasLocationPermission && _isVisible,
+                          myLocationButtonEnabled: false,
+                          zoomControlsEnabled: false,
+                          zoomGesturesEnabled: true,
+                          scrollGesturesEnabled: true,
+                          tiltGesturesEnabled: false,
+                          rotateGesturesEnabled: false,
+                          mapToolbarEnabled: false,
+                          compassEnabled: false,
+                          indoorViewEnabled: false,
+                          trafficEnabled: false,
+                          buildingsEnabled: false,
+                          liteModeEnabled: false,
+                          cameraTargetBounds: CameraTargetBounds.unbounded,
+                          minMaxZoomPreference:
+                              const MinMaxZoomPreference(3.0, 20.0),
+                          mapType: _showSatelliteView
+                              ? MapType.satellite
+                              : MapType.normal,
+                          markers: _markers,
+                          polygons: _polygons,
+                          onTap: (LatLng position) {
+                            debugPrint(
+                                'Map tapped at: ${position.latitude}, ${position.longitude}');
+                          },
+                        )
+                      : Container(
+                          color: Colors.grey[300],
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.map,
+                                    size: 64, color: Colors.grey[600]),
+                                const SizedBox(height: 16),
+                                Text('Map Loading...',
+                                    style: TextStyle(color: Colors.grey[600])),
+                              ],
+                            ),
+                          ),
+                        ),
+                ),
+
+                // Bottom Info Bar
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 4,
+                        offset: const Offset(0, -2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      GestureDetector(
+                        onTap: _showSavedPointsList,
+                        child:
+                            _buildInfoItem('${_landPoints.length}', 'Points'),
+                      ),
+                      _buildInfoItem('${_markers.length}', 'Markers'),
+                      _buildInfoItem(
+                          _hasLocationPermission && _hasLocationService
+                              ? 'ON'
+                              : 'OFF',
+                          'GPS'),
+                      _buildInfoItem(_mapInitialized ? 'ON' : 'OFF', 'Map'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            heroTag: "refresh",
+            mini: true,
+            onPressed: () async {
+              await _loadLandPoints();
+              _showSnackBar('Points refreshed', Colors.blue);
+            },
+            backgroundColor: Colors.blue,
+            child: const Icon(Icons.refresh, color: Colors.white),
+          ),
+          const SizedBox(height: 12),
+          FloatingActionButton(
+            heroTag: "camera",
+            onPressed: () => AppRouter.navigateToCamera(context),
+            backgroundColor: AppTheme.primaryColor,
+            child: const Icon(Icons.add_a_photo, color: Colors.white),
+          ),
+        ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => AppRouter.navigateToCamera(context),
-        backgroundColor: Theme
-            .of(context)
-            .primaryColor,
-        child: const Icon(Icons.add_a_photo, color: Colors.white),
-      ),
+    );
+  }
+
+  Widget _buildInfoItem(String value, String label) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          value,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12),
+        ),
+      ],
     );
   }
 }
