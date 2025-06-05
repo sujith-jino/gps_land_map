@@ -35,7 +35,7 @@ dependencies:
   path_provider: ^2.1.1
 
   # Maps
-  google_maps_flutter: ^2.5.0
+
 
   # Database
   hive: ^2.2.3
@@ -44,6 +44,7 @@ dependencies:
   # Export
   csv: ^5.0.2
   share_plus: ^7.2.1
+  google_maps_flutter: ^2.12.2
 
 dev_dependencies:
   flutter_test:

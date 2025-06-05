@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/services/camera_service.dart';
@@ -18,6 +19,7 @@ class _CameraPageState extends State<CameraPage> {
   final CameraService _cameraService = CameraService();
   final LocationService _locationService = LocationService();
   final DatabaseService _databaseService = DatabaseService();
+  final ImagePicker _imagePicker = ImagePicker();
 
   bool _isInitializing = true;
   bool _isCapturing = false;
@@ -33,6 +35,14 @@ class _CameraPageState extends State<CameraPage> {
     _initializeCamera();
   }
 
+  @override
+  void dispose() {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _cameraService.dispose();
+    });
+    super.dispose();
+  }
+
   Future<void> _initializeCamera() async {
     try {
       setState(() {
@@ -41,41 +51,31 @@ class _CameraPageState extends State<CameraPage> {
       });
 
       await _cameraService.initializeCamera();
-
-      // Get zoom levels
       _maxZoom = await _cameraService.getMaxZoom();
       _minZoom = await _cameraService.getMinZoom();
-
-      setState(() {
-        _isInitializing = false;
-      });
     } catch (e) {
-      setState(() {
-        _isInitializing = false;
-        _errorMessage = e.toString();
-      });
+      setState(() => _errorMessage = e.toString());
+    } finally {
+      if (mounted) {
+        setState(() => _isInitializing = false);
+      }
     }
   }
 
   Future<void> _capturePhoto() async {
-    if (_isCapturing) return;
+    if (_isCapturing || !_cameraService.isInitialized) return;
 
     try {
       setState(() => _isCapturing = true);
-
-      // Capture image
       final imagePath = await _cameraService.captureImage();
 
-      // Get current location
       Position? position;
       try {
         position = await _locationService.getCurrentPosition();
       } catch (e) {
-        // Handle location error but still save the photo
-        print('Location error: $e');
+        debugPrint('Location error: $e');
       }
 
-      // Create land point
       final landPoint = LandPoint(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         latitude: position?.latitude ?? 0.0,
@@ -85,10 +85,8 @@ class _CameraPageState extends State<CameraPage> {
         isSynced: false,
       );
 
-      // Save to database
       await _databaseService.saveLandPoint(landPoint);
 
-      // Show success message
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -108,44 +106,42 @@ class _CameraPageState extends State<CameraPage> {
         );
       }
     } finally {
-      setState(() => _isCapturing = false);
+      if (mounted) {
+        setState(() => _isCapturing = false);
+      }
     }
   }
 
   Future<void> _pickFromGallery() async {
     try {
-      final imagePath = await _cameraService.pickImageFromGallery();
+      final XFile? image = await _imagePicker.pickImage(source: ImageSource.gallery);
+      if (image == null) return;
 
-      if (imagePath != null) {
-        // Get current location
-        Position? position;
-        try {
-          position = await _locationService.getCurrentPosition();
-        } catch (e) {
-          print('Location error: $e');
-        }
+      Position? position;
+      try {
+        position = await _locationService.getCurrentPosition();
+      } catch (e) {
+        debugPrint('Location error: $e');
+      }
 
-        // Create land point
-        final landPoint = LandPoint(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
-          latitude: position?.latitude ?? 0.0,
-          longitude: position?.longitude ?? 0.0,
-          imagePath: imagePath,
-          timestamp: DateTime.now(),
-          isSynced: false,
+      final landPoint = LandPoint(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        latitude: position?.latitude ?? 0.0,
+        longitude: position?.longitude ?? 0.0,
+        imagePath: image.path,
+        timestamp: DateTime.now(),
+        isSynced: false,
+      );
+
+      await _databaseService.saveLandPoint(landPoint);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Image imported successfully!'),
+            backgroundColor: Colors.green,
+          ),
         );
-
-        // Save to database
-        await _databaseService.saveLandPoint(landPoint);
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Image imported successfully!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
       }
     } catch (e) {
       if (mounted) {
@@ -170,250 +166,269 @@ class _CameraPageState extends State<CameraPage> {
           newMode = FlashMode.always;
           break;
         case FlashMode.always:
-          newMode = FlashMode.off;
-          break;
         case FlashMode.torch:
           newMode = FlashMode.off;
           break;
       }
-
       await _cameraService.setFlashMode(newMode);
       setState(() => _flashMode = newMode);
     } catch (e) {
-      // Handle error
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to toggle flash: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
   Future<void> _switchCamera() async {
     try {
       await _cameraService.switchCamera();
-      setState(() {});
+      _maxZoom = await _cameraService.getMaxZoom();
+      _minZoom = await _cameraService.getMinZoom();
+      setState(() => _currentZoom = 1.0);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Cannot switch camera: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to switch camera: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
-  Widget _buildCameraPreview() {
-    if (_isInitializing) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Initializing camera...'),
-          ],
-        ),
-      );
-    }
+  Widget _buildLoadingView() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(height: 16),
+          Text('Initializing camera...', style: TextStyle(color: Colors.white)),
+        ],
+      ),
+    );
+  }
 
-    if (_errorMessage != null) {
-      return Center(
+  Widget _buildErrorView() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.error_outline,
-              size: 64,
-              color: Colors.red,
-            ),
+            const Icon(Icons.error_outline, size: 64, color: Colors.red),
             const SizedBox(height: 16),
             Text(
               'Camera Error',
-              style: Theme.of(context).textTheme.headlineSmall,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white),
             ),
             const SizedBox(height: 8),
             Text(
-              _errorMessage!,
+              _errorMessage ?? 'Unknown error occurred',
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.red),
             ),
             const SizedBox(height: 16),
-            ElevatedButton(
+            ElevatedButton.icon(
               onPressed: _initializeCamera,
-              child: const Text('Retry'),
+              icon: const Icon(Icons.refresh),
+              label: const Text('Try Again'),
             ),
           ],
         ),
-      );
-    }
-
-    if (_cameraService.controller?.value.isInitialized == true) {
-      return CameraPreview(_cameraService.controller!);
-    }
-
-    return const Center(child: Text('Camera not available'));
-  }
-
-  Widget _buildZoomSlider() {
-    return Positioned(
-      right: 16,
-      top: 100,
-      bottom: 200,
-      child: RotatedBox(
-        quarterTurns: 3,
-        child: Slider(
-          value: _currentZoom,
-          min: _minZoom,
-          max: _maxZoom,
-          onChanged: (value) async {
-            setState(() => _currentZoom = value);
-            await _cameraService.setZoom(value);
-          },
-        ),
       ),
     );
   }
 
-  Widget _buildTopControls() {
-    return Positioned(
-      top: MediaQuery.of(context).padding.top + 16,
-      left: 16,
-      right: 16,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          // Flash button
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.black54,
-              borderRadius: BorderRadius.circular(20),
+  Widget _buildCameraView() {
+    final size = MediaQuery.of(context).size;
+    final deviceRatio = size.width / size.height;
+
+    return Stack(
+      children: [
+        // Camera preview
+        Positioned.fill(
+          child: FittedBox(
+            fit: BoxFit.cover,
+            child: SizedBox(
+              width: size.width,
+              height: size.width * deviceRatio,
+              child: CameraPreview(_cameraService.controller!),
             ),
-            child: IconButton(
-              onPressed: _toggleFlash,
-              icon: Icon(
-                _flashMode == FlashMode.off
-                    ? Icons.flash_off
-                    : _flashMode == FlashMode.auto
+          ),
+        ),
+
+        // Top controls
+        Positioned(
+          top: MediaQuery.of(context).padding.top + 16,
+          left: 0,
+          right: 0,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Flash mode
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: IconButton(
+                  onPressed: _toggleFlash,
+                  icon: Icon(
+                    _flashMode == FlashMode.off
+                        ? Icons.flash_off
+                        : _flashMode == FlashMode.auto
                         ? Icons.flash_auto
                         : Icons.flash_on,
-                color: Colors.white,
+                    color: Colors.white,
+                  ),
+                ),
               ),
-            ),
-          ),
-          // Switch camera button
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.black54,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: IconButton(
-              onPressed: _switchCamera,
-              icon: const Icon(
-                Icons.flip_camera_ios,
-                color: Colors.white,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildBottomControls() {
-    return Positioned(
-      bottom: MediaQuery.of(context).padding.bottom + 16,
-      left: 16,
-      right: 16,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          // Gallery button
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.black54,
-              borderRadius: BorderRadius.circular(25),
-            ),
-            child: IconButton(
-              onPressed: _pickFromGallery,
-              icon: const Icon(
-                Icons.photo_library,
-                color: Colors.white,
-                size: 30,
+              // Close button
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white),
+                  onPressed: () => Navigator.pop(context),
+                ),
               ),
-            ),
+            ],
           ),
-          // Capture button
-          GestureDetector(
-            onTap: _capturePhoto,
-            child: Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: _isCapturing ? Colors.grey : Colors.white,
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.grey, width: 4),
-              ),
-              child: _isCapturing
-                  ? const Center(
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.black,
+        ),
+
+        // Bottom controls
+        Positioned(
+          bottom: MediaQuery.of(context).padding.bottom + 16,
+          left: 0,
+          right: 0,
+          child: Column(
+            children: [
+              // Zoom slider
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                child: Row(
+                  children: [
+                    const Icon(Icons.zoom_out, color: Colors.white),
+                    Expanded(
+                      child: Slider(
+                        value: _currentZoom,
+                        min: _minZoom,
+                        max: _maxZoom,
+                        divisions: (_maxZoom - _minZoom > 1)
+                            ? (_maxZoom - _minZoom).round() * 10
+                            : null,
+                        onChanged: (value) {
+                          setState(() => _currentZoom = value);
+                        },
+                        onChangeEnd: (value) {
+                          _cameraService.setZoom(value);
+                        },
+                        activeColor: Colors.white,
+                        inactiveColor: Colors.white54,
                       ),
-                    )
-                  : const Icon(
-                      Icons.camera_alt,
-                      size: 40,
-                      color: Colors.black,
                     ),
-            ),
-          ),
-          // Settings button
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.black54,
-              borderRadius: BorderRadius.circular(25),
-            ),
-            child: IconButton(
-              onPressed: () {
-                // Navigate to camera settings if needed
-              },
-              icon: const Icon(
-                Icons.settings,
-                color: Colors.white,
-                size: 30,
+                    const Icon(Icons.zoom_in, color: Colors.white),
+                  ],
+                ),
               ),
-            ),
+
+              // Capture button row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  // Gallery button
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(25),
+                    ),
+                    child: IconButton(
+                      onPressed: _pickFromGallery,
+                      icon: const Icon(
+                        Icons.photo_library,
+                        color: Colors.white,
+                        size: 30,
+                      ),
+                    ),
+                  ),
+
+                  // Capture button
+                  GestureDetector(
+                    onTap: _capturePhoto,
+                    child: Container(
+                      width: 70,
+                      height: 70,
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 3),
+                      ),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: _isCapturing ? Colors.grey : Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                        child: _isCapturing
+                            ? const Center(
+                          child: SizedBox(
+                            width: 30,
+                            height: 30,
+                            child: CircularProgressIndicator(
+                              color: Colors.black,
+                              strokeWidth: 3,
+                            ),
+                          ),
+                        )
+                            : null,
+                      ),
+                    ),
+                  ),
+
+                  // Switch camera button
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(25),
+                    ),
+                    child: IconButton(
+                      onPressed: _switchCamera,
+                      icon: const Icon(
+                        Icons.switch_camera,
+                        color: Colors.white,
+                        size: 30,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        title: Text(l10n.camera),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: Colors.white,
-      ),
-      body: Stack(
-        children: [
-          // Camera preview
-          Positioned.fill(
-            child: _buildCameraPreview(),
-          ),
-          // Zoom slider
-          if (_cameraService.isInitialized) _buildZoomSlider(),
-          // Top controls
-          if (_cameraService.isInitialized) _buildTopControls(),
-          // Bottom controls
-          if (_cameraService.isInitialized) _buildBottomControls(),
-        ],
+      body: SafeArea(
+        child: _isInitializing
+            ? _buildLoadingView()
+            : _errorMessage != null
+            ? _buildErrorView()
+            : _buildCameraView(),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _cameraService.dispose();
-    super.dispose();
   }
 }

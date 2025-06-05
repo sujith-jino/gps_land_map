@@ -31,8 +31,13 @@ Future<void> _initializeServices() async {
     // Initialize AI service
     await AIService().initializeModels();
 
-    // Initialize camera service
-    await CameraService().initializeCamera();
+    // Initialize camera service with better error handling
+    try {
+      await CameraService().initializeCamera();
+    } catch (e) {
+      debugPrint('Camera initialization failed: $e');
+      // Continue without camera - user can try again later
+    }
   } catch (e) {
     debugPrint('Error initializing services: $e');
   }

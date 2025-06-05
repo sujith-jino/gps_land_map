@@ -33,6 +33,10 @@ class CameraService {
 
   Future<void> initializeCamera() async {
     try {
+      // Dispose existing controller first
+      await _cameraController?.dispose();
+      _cameraController = null;
+
       final hasPermission = await requestCameraPermission();
       if (!hasPermission) {
         throw Exception('Camera permission denied');
@@ -45,12 +49,23 @@ class CameraService {
 
       _cameraController = CameraController(
         _cameras!.first,
-        ResolutionPreset.high,
+        ResolutionPreset.medium,
+        // Reduced from high to medium to prevent buffer issues
         enableAudio: false,
+        imageFormatGroup: ImageFormatGroup.jpeg,
       );
 
       await _cameraController!.initialize();
+
+      // Set initial flash mode
+      await _cameraController!.setFlashMode(FlashMode.off);
+
+      // Add small delay to ensure camera is fully ready
+      await Future.delayed(const Duration(milliseconds: 100));
     } catch (e) {
+      // Cleanup on error
+      await _cameraController?.dispose();
+      _cameraController = null;
       throw Exception('Failed to initialize camera: $e');
     }
   }
@@ -62,6 +77,9 @@ class CameraService {
         throw Exception('Camera not initialized');
       }
 
+      // Add delay before capture to prevent buffer issues
+      await Future.delayed(const Duration(milliseconds: 50));
+
       final XFile image = await _cameraController!.takePicture();
 
       // Save to app directory
@@ -69,9 +87,7 @@ class CameraService {
       final String imagePath = path.join(
         appDir.path,
         'images',
-        'land_${DateTime
-            .now()
-            .millisecondsSinceEpoch}.jpg',
+        'land_${DateTime.now().millisecondsSinceEpoch}.jpg',
       );
 
       // Create directory if it doesn't exist
@@ -82,6 +98,13 @@ class CameraService {
 
       // Copy image to permanent location
       await File(image.path).copy(imagePath);
+
+      // Clean up temporary file
+      try {
+        await File(image.path).delete();
+      } catch (e) {
+        // Ignore cleanup errors
+      }
 
       return imagePath;
     } catch (e) {
@@ -107,9 +130,7 @@ class CameraService {
         final String imagePath = path.join(
           appDir.path,
           'images',
-          'gallery_${DateTime
-              .now()
-              .millisecondsSinceEpoch}.jpg',
+          'gallery_${DateTime.now().millisecondsSinceEpoch}.jpg',
         );
 
         // Create directory if it doesn't exist
@@ -139,16 +160,23 @@ class CameraService {
           _cameraController!.description);
       final nextCameraIndex = (currentCameraIndex + 1) % _cameras!.length;
 
+      // Properly dispose current controller
       await _cameraController?.dispose();
+      _cameraController = null;
 
       _cameraController = CameraController(
         _cameras![nextCameraIndex],
         ResolutionPreset.high,
         enableAudio: false,
+        imageFormatGroup: ImageFormatGroup.jpeg,
       );
 
       await _cameraController!.initialize();
+      await _cameraController!.setFlashMode(FlashMode.off);
     } catch (e) {
+      // Cleanup on error
+      await _cameraController?.dispose();
+      _cameraController = null;
       throw Exception('Failed to switch camera: $e');
     }
   }
@@ -201,9 +229,7 @@ class CameraService {
       final String videoPath = path.join(
         appDir.path,
         'videos',
-        'land_${DateTime
-            .now()
-            .millisecondsSinceEpoch}.mp4',
+        'land_${DateTime.now().millisecondsSinceEpoch}.mp4',
       );
 
       // Create directory if it doesn't exist
@@ -243,8 +269,8 @@ class CameraService {
     }
   }
 
-  void dispose() {
-    _cameraController?.dispose();
+  Future<void> dispose() async {
+    await _cameraController?.dispose();
     _cameraController = null;
   }
 }

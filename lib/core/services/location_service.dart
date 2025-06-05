@@ -17,8 +17,37 @@ class LocationService {
   Stream<Position> get positionStream => _positionController.stream;
 
   Future<bool> requestLocationPermission() async {
-    final permission = await Permission.location.request();
-    return permission.isGranted;
+    try {
+      // Check current permission status first
+      LocationPermission permission = await checkLocationPermission();
+
+      if (permission == LocationPermission.denied) {
+        // Request permission using geolocator directly (no system settings popup)
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          return false;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        return false;
+      }
+
+      // Only check location services after permission is granted
+      if (permission == LocationPermission.whileInUse ||
+          permission == LocationPermission.always) {
+        final serviceEnabled = await isLocationServiceEnabled();
+        if (!serviceEnabled) {
+          // Don't open settings automatically, just return false
+          return false;
+        }
+      }
+
+      return permission == LocationPermission.whileInUse ||
+          permission == LocationPermission.always;
+    } catch (e) {
+      return false;
+    }
   }
 
   Future<bool> isLocationServiceEnabled() async {

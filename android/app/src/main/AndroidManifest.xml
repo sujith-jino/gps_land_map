@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:tools="http://schemas.android.com/tools"
+    xmlns:android="http://schemas.android.com/apk/res/android">
 
 <!-- Camera permissions -->
     <uses-permission android:name="android.permission.CAMERA" />
@@ -25,7 +26,8 @@
     <application
         android:label="land_map"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        tools:ignore="ExtraText">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -54,10 +56,12 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
+        <!-- IMPORTANT: Replace YOUR_ACTUAL_API_KEY_HERE with your real Google Maps API key -->
+
         <!-- Google Maps API Key -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="YOUR_API_KEY_HERE" />
+            android:value="AIzaSyDzhBYBKT8s-bbrrYGBSCAFwudEMdVqyNU" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
