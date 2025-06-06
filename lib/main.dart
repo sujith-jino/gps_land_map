@@ -20,7 +20,6 @@ void main() async {
   ]);
 
   // Initialize services
-  await _initializeServices();
 
   runApp(const LandMapperApp());
 }

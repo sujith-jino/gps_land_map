@@ -394,6 +394,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _navigateToSavedPoints() {
-    // Implement navigation to saved points
+    AppRouter.navigateToSavedPoints(context);
   }
 }

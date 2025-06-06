@@ -4,6 +4,7 @@ import '../../features/camera/presentation/pages/camera_page.dart';
 import '../../features/map/presentation/pages/map_page.dart';
 import '../../features/map/presentation/pages/land_measure_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
+import '../../features/saved_points/presentation/pages/saved_points_page.dart';
 
 class AppRouter {
   static const String home = '/';
@@ -11,6 +12,7 @@ class AppRouter {
   static const String map = '/map';
   static const String landMeasure = '/land-measure';
   static const String settings = '/settings';
+  static const String savedPoints = '/saved-points';
   static const String landPointDetails = '/land-point-details';
   static const String imageAnalysis = '/image-analysis';
 
@@ -36,10 +38,13 @@ class AppRouter {
         return MaterialPageRoute(
           builder: (_) => const SettingsPage(),
         );
+      case '/saved-points':
+        return MaterialPageRoute(
+          builder: (_) => const SavedPointsPage(),
+        );
       default:
         return MaterialPageRoute(
-          builder: (_) =>
-          const Scaffold(
+          builder: (_) => const Scaffold(
             body: Center(
               child: Text('Route not found'),
             ),
@@ -66,5 +71,9 @@ class AppRouter {
 
   static void navigateToSettings(BuildContext context) {
     Navigator.pushNamed(context, settings);
+  }
+
+  static void navigateToSavedPoints(BuildContext context) {
+    Navigator.pushNamed(context, savedPoints);
   }
 }
