@@ -77,7 +77,8 @@ class _HomePageState extends State<HomePage> {
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.only(bottom: 76), // Space for bottom nav bar
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 2.0, vertical: 8.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -112,14 +113,7 @@ class _HomePageState extends State<HomePage> {
               ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => AppRouter.navigateToCamera(context),
-        icon: const Icon(MdiIcons.camera, size: 24),
-        label: Text(l10n.takePhoto, style: const TextStyle(fontSize: 14)),
-        elevation: 4.0,
-        backgroundColor: Theme.of(context).primaryColor,
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      floatingActionButton: null,
       bottomNavigationBar: _buildBottomNavigationBar(l10n),
     );
   }
@@ -220,18 +214,12 @@ class _HomePageState extends State<HomePage> {
   Widget _buildSectionTitle(String title, IconData icon) {
     return Row(
       children: [
-        Icon(icon, color: Theme
-            .of(context)
-            .primaryColor),
+        Icon(icon, color: Theme.of(context).primaryColor),
         const SizedBox(width: 8),
         Text(
           title,
-          style: Theme
-              .of(context)
-              .textTheme
-              .titleLarge
-              ?.copyWith(
-            fontWeight: FontWeight.bold,
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
           ),
         ),
       ],
@@ -247,9 +235,9 @@ class _HomePageState extends State<HomePage> {
       notchMargin: 8.0,
       child: Container(
         height: _bottomNavBarHeight,
-        padding: const EdgeInsets.symmetric(horizontal: 4.0),
+        padding: const EdgeInsets.symmetric(horizontal: 0.0),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             // Home Button
             _buildBottomNavButton(
@@ -265,13 +253,21 @@ class _HomePageState extends State<HomePage> {
               label: l10n.map,
               onTap: () => AppRouter.navigateToMap(context),
             ),
-            
-            // Empty space for FAB
-            const SizedBox(width: 56),
-            
-            // Camera Button - Now handled by FAB
-            const SizedBox(width: 56),
-            
+
+            // Camera Button
+            _buildBottomNavButton(
+              icon: Icons.camera_alt,
+              label: l10n.camera,
+              onTap: () => AppRouter.navigateToCamera(context),
+            ),
+
+            // Saved Points Button
+            _buildBottomNavButton(
+              icon: Icons.bookmark,
+              label: l10n.savedPoints,
+              onTap: () => _navigateToSavedPoints(),
+            ),
+
             // Settings Button
             _buildBottomNavButton(
               icon: Icons.settings,
@@ -301,21 +297,24 @@ class _HomePageState extends State<HomePage> {
             children: [
               Icon(
                 icon,
-                size: 24,
-                color: isSelected 
-                    ? Theme.of(context).primaryColor 
+                size: 20,
+                color: isSelected
+                    ? Theme.of(context).primaryColor
                     : Colors.grey[600],
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 12,
-                  color: isSelected 
-                      ? Theme.of(context).primaryColor 
+                  fontSize: 10,
+                  color: isSelected
+                      ? Theme.of(context).primaryColor
                       : Colors.grey[600],
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                 ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
@@ -331,6 +330,9 @@ class _HomePageState extends State<HomePage> {
         break;
       case 'map':
         AppRouter.navigateToMap(context);
+        break;
+      case 'measure':
+        AppRouter.navigateToLandMeasure(context);
         break;
       case 'location':
         _getCurrentLocation();
@@ -389,5 +391,9 @@ class _HomePageState extends State<HomePage> {
       const SnackBar(content: Text('Syncing data...')),
     );
     // Implement sync logic
+  }
+
+  void _navigateToSavedPoints() {
+    // Implement navigation to saved points
   }
 }
