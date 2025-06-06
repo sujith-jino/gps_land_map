@@ -44,6 +44,8 @@ dependencies:
   # Export
   csv: ^5.0.2
   share_plus: ^7.2.1
+  shared_preferences: ^2.5.3
+  provider: ^6.1.5
 
 dev_dependencies:
   flutter_test:

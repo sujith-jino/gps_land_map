@@ -1,71 +1,45 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'core/localization/app_localizations.dart';
-import 'core/services/database_service.dart';
-import 'core/services/camera_service.dart';
-import 'core/services/ai_service.dart';
-import 'features/home/presentation/pages/home_page.dart';
+import 'shared/providers/theme_provider.dart';
 import 'shared/theme/app_theme.dart';
 import 'shared/navigation/app_router.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  // Set preferred orientations
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
-
-  // Initialize services
-  await _initializeServices();
-
-  runApp(const LandMapperApp());
+void main() {
+  runApp(const LandMapApp());
 }
 
-Future<void> _initializeServices() async {
-  try {
-    // Initialize database
-    await DatabaseService().initialize();
-
-    // Initialize AI service
-    await AIService().initializeModels();
-
-    // Initialize camera service with better error handling
-    try {
-      await CameraService().initializeCamera();
-    } catch (e) {
-      debugPrint('Camera initialization failed: $e');
-      // Continue without camera - user can try again later
-    }
-  } catch (e) {
-    debugPrint('Error initializing services: $e');
-  }
-}
-
-class LandMapperApp extends StatelessWidget {
-  const LandMapperApp({super.key});
+class LandMapApp extends StatelessWidget {
+  const LandMapApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Land Mapper',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      onGenerateRoute: AppRouter.generateRoute,
-      home: const HomePage(),
-      builder: (context, child) {
-        return MediaQuery(
-          data: MediaQuery.of(
-            context,
-          ).copyWith(textScaler: const TextScaler.linear(1.0)),
-          child: child!,
-        );
-      },
+    return ChangeNotifierProvider(
+      create: (context) => ThemeProvider(),
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, child) {
+          return MaterialApp(
+            title: 'Land Map',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: themeProvider.themeMode,
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: const [
+              Locale('en', ''),
+              Locale('ta', ''),
+            ],
+            onGenerateRoute: AppRouter.generateRoute,
+            initialRoute: '/',
+          );
+        },
+      ),
     );
   }
 }
