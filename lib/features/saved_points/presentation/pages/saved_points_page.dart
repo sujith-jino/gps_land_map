@@ -50,7 +50,9 @@ class _SavedPointsPageState extends State<SavedPointsPage> {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading saved points: $e')),
+          SnackBar(
+            content: Text('Error loading saved points: $e'),
+          ),
         );
       }
     }
@@ -304,17 +306,21 @@ class _SavedPointsPageState extends State<SavedPointsPage> {
 
     if (confirmed == true) {
       try {
-        await _databaseService.deleteLandPoint(point.id!);
+        await _databaseService.deleteLandPoint(point.id);
         await _loadSavedPoints();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Point deleted successfully')),
+            const SnackBar(
+              content: Text('Point deleted successfully'),
+            ),
           );
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error deleting point: $e')),
+            SnackBar(
+              content: Text('Error deleting point: $e'),
+            ),
           );
         }
       }
@@ -323,63 +329,89 @@ class _SavedPointsPageState extends State<SavedPointsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = AppLocalizations.of(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.savedPoints),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.sort),
-            onPressed: _showSortOptions,
+    return Column(
+      children: [
+        // App Bar replacement
+        Container(
+          padding: EdgeInsets.only(
+            top: MediaQuery.of(context).padding.top + 16,
+            left: 16,
+            right: 16,
+            bottom: 16,
           ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Search Bar
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search saved points...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
-                  icon: const Icon(Icons.clear),
-                  onPressed: () {
-                    _searchController.clear();
-                  },
-                )
-                    : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+          decoration: BoxDecoration(
+            color: Theme.of(context).appBarTheme.backgroundColor ??
+                Theme.of(context).primaryColor,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Text(
+                l10n?.savedPoints ?? 'Saved Points',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.sort, color: Colors.white),
+                onPressed: _showSortOptions,
+              ),
+            ],
+          ),
+        ),
+
+        // Search Bar
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              hintText: 'Search saved points...',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _searchController.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        _searchController.clear();
+                      },
+                    )
+                  : null,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
             ),
           ),
+        ),
 
-          // Points List
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _filteredPoints.isEmpty
-                ? _buildEmptyState()
-                : RefreshIndicator(
-              onRefresh: _loadSavedPoints,
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: _filteredPoints.length,
-                itemBuilder: (context, index) {
-                  final point = _filteredPoints[index];
-                  return _buildPointCard(point);
-                },
-              ),
-            ),
-          ),
-        ],
-      ),
+        // Points List
+        Expanded(
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _filteredPoints.isEmpty
+                  ? _buildEmptyState()
+                  : RefreshIndicator(
+                      onRefresh: _loadSavedPoints,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: _filteredPoints.length,
+                        itemBuilder: (context, index) {
+                          final point = _filteredPoints[index];
+                          return _buildPointCard(point);
+                        },
+                      ),
+                    ),
+        ),
+      ],
     );
   }
 
@@ -430,8 +462,7 @@ class _SavedPointsPageState extends State<SavedPointsPage> {
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
         leading: CircleAvatar(
-          backgroundColor:
-              Theme.of(context).primaryColor.withValues(alpha: 0.1),
+          backgroundColor: Theme.of(context).primaryColor.withAlpha(25),
           child: Icon(
             Icons.location_on,
             color: Theme
