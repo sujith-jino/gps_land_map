@@ -3,7 +3,12 @@ import '../../core/localization/app_localizations.dart';
 import '../../features/map/presentation/pages/map_page.dart';
 import '../../features/saved_points/presentation/pages/saved_points_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
-import '../navigation/app_router.dart';
+
+class MainNavigationRouteNames {
+  static const map = '/map';
+  static const savedPoints = '/saved-points';
+  static const settings = '/settings';
+}
 
 class MainNavigation extends StatefulWidget {
   final int initialIndex;
