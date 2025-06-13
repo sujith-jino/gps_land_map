@@ -158,6 +158,82 @@ abstract class AppLocalizations {
   String get light;
 
   String get dark;
+
+  // Search and Sort
+  String get search;
+
+  String get searchSavedPoints;
+
+  String get sortBy;
+
+  String get date;
+
+  String get name;
+
+  String get ascending;
+
+  String get descending;
+
+  String get close;
+
+  String get deletePoint;
+
+  String get deleteConfirmation;
+
+  String get areYouSureDeletePoint;
+
+  String get pointDeletedSuccessfully;
+
+  String get errorDeletingPoint;
+
+  String get errorLoadingSavedPoints;
+
+  String get noPointsFound;
+
+  String get noSavedPointsYet;
+
+  String get tryAdjustingSearch;
+
+  String get startCapturingPoints;
+
+  String get unnamedPoint;
+
+  String get analysisResults;
+
+  String get landFeature;
+
+  String get vegetationCoverage;
+
+  String get waterCoverage;
+
+  String get elevationEstimate;
+
+  String get confidence;
+
+  String get notes;
+
+  String get useDarkTheme;
+
+  String get landMapVersion;
+
+  String get aiPoweredDescription;
+
+  // Camera
+  String get photoCapturedSuccessfully;
+
+  String get errorCapturingPhoto;
+
+  String get imageImportedSuccessfully;
+
+  String get errorImportingImage;
+
+  String get cannotSwitchCamera;
+
+  String get initializingCamera;
+
+  String get cameraNotAvailable;
+
+  String get routeNotFound;
 }
 
 class _AppLocalizationsDelegate
@@ -377,6 +453,119 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dark => 'Dark';
+
+  @override
+  String get search => 'Search';
+
+  @override
+  String get searchSavedPoints => 'Search Saved Points';
+
+  @override
+  String get sortBy => 'Sort By';
+
+  @override
+  String get date => 'Date';
+
+  @override
+  String get name => 'Name';
+
+  @override
+  String get ascending => 'Ascending';
+
+  @override
+  String get descending => 'Descending';
+
+  @override
+  String get close => 'Close';
+
+  @override
+  String get deletePoint => 'Delete Point';
+
+  @override
+  String get deleteConfirmation => 'Delete Confirmation';
+
+  @override
+  String get areYouSureDeletePoint =>
+      'Are you sure you want to delete this point?';
+
+  @override
+  String get pointDeletedSuccessfully => 'Point Deleted Successfully';
+
+  @override
+  String get errorDeletingPoint => 'Error Deleting Point';
+
+  @override
+  String get errorLoadingSavedPoints => 'Error Loading Saved Points';
+
+  @override
+  String get noPointsFound => 'No Points Found';
+
+  @override
+  String get noSavedPointsYet => 'No Saved Points Yet';
+
+  @override
+  String get tryAdjustingSearch => 'Try Adjusting Search';
+
+  @override
+  String get startCapturingPoints => 'Start Capturing Points';
+
+  @override
+  String get unnamedPoint => 'Unnamed Point';
+
+  @override
+  String get analysisResults => 'Analysis Results';
+
+  @override
+  String get landFeature => 'Land Feature';
+
+  @override
+  String get vegetationCoverage => 'Vegetation Coverage';
+
+  @override
+  String get waterCoverage => 'Water Coverage';
+
+  @override
+  String get elevationEstimate => 'Elevation Estimate';
+
+  @override
+  String get confidence => 'Confidence';
+
+  @override
+  String get notes => 'Notes';
+
+  @override
+  String get useDarkTheme => 'Use Dark Theme';
+
+  @override
+  String get landMapVersion => 'Land Map Version';
+
+  @override
+  String get aiPoweredDescription => 'AI Powered Description';
+
+  @override
+  String get photoCapturedSuccessfully =>
+      'Photo captured and saved successfully!';
+
+  @override
+  String get errorCapturingPhoto => 'Error capturing photo';
+
+  @override
+  String get imageImportedSuccessfully => 'Image imported successfully!';
+
+  @override
+  String get errorImportingImage => 'Error importing image';
+
+  @override
+  String get cannotSwitchCamera => 'Cannot switch camera';
+
+  @override
+  String get initializingCamera => 'Initializing camera...';
+
+  @override
+  String get cameraNotAvailable => 'Camera not available';
+
+  @override
+  String get routeNotFound => 'Route not found';
 }
 
 class AppLocalizationsTa extends AppLocalizations {
@@ -407,7 +596,7 @@ class AppLocalizationsTa extends AppLocalizations {
   String get location => 'இடம்';
 
   @override
-  String get latitude => 'அட்சாங்சம்';
+  String get latitude => 'அட்சாங்கம்';
 
   @override
   String get longitude => 'தீர்க்கரேகை';
@@ -555,6 +744,120 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get dark => 'மாற்று முறை';
+
+  @override
+  String get search => 'தேடு';
+
+  @override
+  String get searchSavedPoints => 'சேமிக்கப்பட்ட புள்ளிகளைத் தேடவும்';
+
+  @override
+  String get sortBy => 'தொகுப்பு';
+
+  @override
+  String get date => 'தேதி';
+
+  @override
+  String get name => 'பெயர்';
+
+  @override
+  String get ascending => 'வரிசை உயர்வாக';
+
+  @override
+  String get descending => 'வரிசை குறைவாக';
+
+  @override
+  String get close => 'மூடவும்';
+
+  @override
+  String get deletePoint => 'புள்ளியை நீக்கவும்';
+
+  @override
+  String get deleteConfirmation => 'நீக்குதல் உறுதிப்படுத்தவும்';
+
+  @override
+  String get areYouSureDeletePoint => 'இந்த புள்ளியை நீக்க விரும்புகிறீர்களா?';
+
+  @override
+  String get pointDeletedSuccessfully => 'புள்ளி வெற்றிகரமாக நீக்கப்பட்டது';
+
+  @override
+  String get errorDeletingPoint => 'புள்ளியை நீக்கும் போது பிழை ஏற்பட்டது';
+
+  @override
+  String get errorLoadingSavedPoints =>
+      'சேமிக்கப்பட்ட புள்ளிகளை ஏற்றும் போது பிழை ஏற்பட்டது';
+
+  @override
+  String get noPointsFound => 'புள்ளிகள் கிடைக்கவில்லை';
+
+  @override
+  String get noSavedPointsYet => 'இதுவரை சேமிக்கப்படாத புள்ளிகள்';
+
+  @override
+  String get tryAdjustingSearch => 'தேடுதலை மாற்றி முயற்சிக்கவும்';
+
+  @override
+  String get startCapturingPoints => 'புள்ளிகளை பிடிக்க தொடங்கவும்';
+
+  @override
+  String get unnamedPoint => 'பெயரில்லா புள்ளி';
+
+  @override
+  String get analysisResults => 'பகுப்பாய்வு முடிவுகள்';
+
+  @override
+  String get landFeature => 'நில அம்சம்';
+
+  @override
+  String get vegetationCoverage => 'தாவர மூடல்';
+
+  @override
+  String get waterCoverage => 'நீர் மூடல்';
+
+  @override
+  String get elevationEstimate => 'உயர மதிப்பு';
+
+  @override
+  String get confidence => 'நம்பிக்கை';
+
+  @override
+  String get notes => 'குறிப்புகள்';
+
+  @override
+  String get useDarkTheme => 'மாற்று முறை பயன்படுத்தவும்';
+
+  @override
+  String get landMapVersion => 'நில வரைபட பதிப்பு';
+
+  @override
+  String get aiPoweredDescription => 'AI செயலியால் ஆதரிக்கப்பட்ட விவரணம்';
+
+  @override
+  String get photoCapturedSuccessfully =>
+      'புகைப்படம் எடுக்கப்பட்டு வெற்றிகரமாக சேமிக்கப்பட்டது!';
+
+  @override
+  String get errorCapturingPhoto => 'புகைப்படம் எடுக்கும் போது பிழை';
+
+  @override
+  String get imageImportedSuccessfully =>
+      'படம் வெற்றிகரமாக இறக்குமதி செய்யப்பட்டது!';
+
+  @override
+  String get errorImportingImage => 'படம் இறக்குமதி செய்யும் போது பிழை';
+
+  @override
+  String get cannotSwitchCamera => 'கேமராவை மாற்ற முடியவில்லை';
+
+  @override
+  String get initializingCamera => 'கேமராவை துவக்குகிறது...';
+
+  @override
+  String get cameraNotAvailable => 'கேமரா கிடைக்கவில்லை';
+
+  @override
+  String get routeNotFound => 'பாதை கண்டுபிடிக்கப்படவில்லை';
 }
 
 class AppLocalizationsHi extends AppLocalizations {
@@ -733,6 +1036,120 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get dark => 'डार्क';
+
+  @override
+  String get search => 'खोज';
+
+  @override
+  String get searchSavedPoints => 'सहेजे गए बिंदुओं की खोज करें';
+
+  @override
+  String get sortBy => 'क्रमबद्ध करें';
+
+  @override
+  String get date => 'तारीख';
+
+  @override
+  String get name => 'नाम';
+
+  @override
+  String get ascending => 'आरोही';
+
+  @override
+  String get descending => 'अवरोही';
+
+  @override
+  String get close => 'बंद करें';
+
+  @override
+  String get deletePoint => 'बिंदु हटाएं';
+
+  @override
+  String get deleteConfirmation => 'हटाने की पुष्टि करें';
+
+  @override
+  String get areYouSureDeletePoint =>
+      'क्या आप वाकई इस बिंदु को हटाना चाहते हैं?';
+
+  @override
+  String get pointDeletedSuccessfully => 'बिंदु सफलतापूर्वक हटा दिया गया';
+
+  @override
+  String get errorDeletingPoint => 'बिंदु हटाने में त्रुटि हुई';
+
+  @override
+  String get errorLoadingSavedPoints =>
+      'सहेजे गए बिंदु लोड करने में त्रुटि हुई';
+
+  @override
+  String get noPointsFound => 'कोई बिंदु नहीं मिला';
+
+  @override
+  String get noSavedPointsYet => 'अभी तक कोई बिंदु नहीं सहेजा गया';
+
+  @override
+  String get tryAdjustingSearch => 'खोज समायोजित करके दोबारा कोशिश करें';
+
+  @override
+  String get startCapturingPoints => 'बिंदु पकड़ना शुरू करें';
+
+  @override
+  String get unnamedPoint => 'नामहीन बिंदु';
+
+  @override
+  String get analysisResults => 'विश्लेषण परिणाम';
+
+  @override
+  String get landFeature => 'भूमि की विशेषता';
+
+  @override
+  String get vegetationCoverage => 'वनस्पति कवरेज';
+
+  @override
+  String get waterCoverage => 'जल कवरेज';
+
+  @override
+  String get elevationEstimate => 'ऊंचाई का अनुमान';
+
+  @override
+  String get confidence => 'विश्वास';
+
+  @override
+  String get notes => 'टिप्पणियाँ';
+
+  @override
+  String get useDarkTheme => 'डार्क थीम का उपयोग करें';
+
+  @override
+  String get landMapVersion => 'भूमि मानचित्र संस्करण';
+
+  @override
+  String get aiPoweredDescription => 'AI द्वारा संचालित विवरण';
+
+  @override
+  String get photoCapturedSuccessfully =>
+      'फोटो सफलतापूर्वक कैप्चर और सेव किया गया!';
+
+  @override
+  String get errorCapturingPhoto => 'फोटो कैप्चर करने में त्रुटि';
+
+  @override
+  String get imageImportedSuccessfully => 'छवि सफलतापूर्वक आयात की गई!';
+
+  @override
+  String get errorImportingImage => 'छवि आयात करने में त्रुटि';
+
+  @override
+  String get cannotSwitchCamera => 'कैमरा स्विच नहीं कर सकते';
+
+  @override
+  String get initializingCamera => 'कैमरा आरम्भ हो रहा है...';
+
+  @override
+  String get cameraNotAvailable => 'कैमरा उपलब्ध नहीं';
+
+  @override
+  String get routeNotFound => 'रूट नहीं मिला';
 }
 
 class AppLocalizationsTe extends AppLocalizations {
@@ -912,6 +1329,122 @@ class AppLocalizationsTe extends AppLocalizations {
 
   @override
   String get dark => 'డార్క్';
+
+  @override
+  String get search => 'శోధించండి';
+
+  @override
+  String get searchSavedPoints => 'సేవ్ చేసిన పాయింట్లను శోధించండి';
+
+  @override
+  String get sortBy => 'సారణి';
+
+  @override
+  String get date => 'తేది';
+
+  @override
+  String get name => 'పేరు';
+
+  @override
+  String get ascending => 'పైకి';
+
+  @override
+  String get descending => 'దిగువకు';
+
+  @override
+  String get close => 'మూసివేయండి';
+
+  @override
+  String get deletePoint => 'పాయింట్ ని తొలగించండి';
+
+  @override
+  String get deleteConfirmation => 'తొలగించడాన్ని ధృవీకరించండి';
+
+  @override
+  String get areYouSureDeletePoint =>
+      'మీరు ఈ పాయింట్ ని తొలగించాలని నిర్ధారించుకున్నారా?';
+
+  @override
+  String get pointDeletedSuccessfully =>
+      'పాయింట్ సక్సెస్ ఫుల్ గా తొలగించబడింది';
+
+  @override
+  String get errorDeletingPoint => 'పాయింట్ తొలగించడంలో పొరపాటు';
+
+  @override
+  String get errorLoadingSavedPoints =>
+      'సేవ్ చేసిన పాయింట్లను లోడ్ చేయడంలో పొరపాటు';
+
+  @override
+  String get noPointsFound => 'పాయింట్లు కనుగొనబడలేదు';
+
+  @override
+  String get noSavedPointsYet => 'ఇంకా సేవ్ చేయబడని పాయింట్లు';
+
+  @override
+  String get tryAdjustingSearch => 'శోధనను సరిచేసి ప్రయత్నించండి';
+
+  @override
+  String get startCapturingPoints => 'పాయింట్లను సేకరించడం ప్రారంభించండి';
+
+  @override
+  String get unnamedPoint => 'పేరు లేని పాయింట్';
+
+  @override
+  String get analysisResults => 'విశ్లేషణ ఫలితాలు';
+
+  @override
+  String get landFeature => 'ల్యాండ్ ఫీచర్';
+
+  @override
+  String get vegetationCoverage => 'వెజిటేషన్ కవరేజ్';
+
+  @override
+  String get waterCoverage => 'వాటర్ కవరేజ్';
+
+  @override
+  String get elevationEstimate => 'ఎత్తు అంచనా';
+
+  @override
+  String get confidence => 'నమ్మకం';
+
+  @override
+  String get notes => 'నోట్లు';
+
+  @override
+  String get useDarkTheme => 'డార్క్ థీమ్ ఉపయోగించండి';
+
+  @override
+  String get landMapVersion => 'ల్యాండ్ మాప్ వెర్షన్';
+
+  @override
+  String get aiPoweredDescription => 'ఎఐ బేస్డ్ వివరణ';
+
+  @override
+  String get photoCapturedSuccessfully =>
+      'ఫోటో విజయవంతంగా క్యాప్చర్ మరియు సేవ్ చేయబడింది!';
+
+  @override
+  String get errorCapturingPhoto => 'ఫోటో క్యాప్చర్ చేయడంలో పొరపాటు';
+
+  @override
+  String get imageImportedSuccessfully =>
+      'ఇమేజ్ విజయవంతంగా ఇంపోర్ట్ చేయబడింది!';
+
+  @override
+  String get errorImportingImage => 'ఇమేజ్ ఇంపోర్ట్ చేయడంలో పొరపాటు';
+
+  @override
+  String get cannotSwitchCamera => 'కెమెరాను స్విచ్ చేయలేము';
+
+  @override
+  String get initializingCamera => 'కెమెరా ప్రారంభిస్తోంది...';
+
+  @override
+  String get cameraNotAvailable => 'కెమెరా అందుబాటులో లేదు';
+
+  @override
+  String get routeNotFound => 'రూట్ కనుగొనబడలేదు';
 }
 
 class AppLocalizationsMl extends AppLocalizations {
@@ -1091,6 +1624,119 @@ class AppLocalizationsMl extends AppLocalizations {
 
   @override
   String get dark => 'ഡാർക്ക്';
+
+  @override
+  String get search => 'തിരയുക';
+
+  @override
+  String get searchSavedPoints => 'സേവ് ചെയ്ത ബിന്ദുക്കൾ തിരയുക';
+
+  @override
+  String get sortBy => 'തരംതിരിക്കുക';
+
+  @override
+  String get date => 'തീയതി';
+
+  @override
+  String get name => 'പേര്';
+
+  @override
+  String get ascending => 'അര്‍ദ്ധനില';
+
+  @override
+  String get descending => 'അവര്‍ദ്ധനില';
+
+  @override
+  String get close => 'അടയ്ക്കുക';
+
+  @override
+  String get deletePoint => 'ബിന്ദു ഇല്ലാതാക്കുക';
+
+  @override
+  String get deleteConfirmation => 'ഇല്ലാതാക്കൽ ഉറപ്പാക്കുക';
+
+  @override
+  String get areYouSureDeletePoint => 'ബിന്ദു ഇല്ലാതാക്കണമോ എന്ന് ഉറപ്പാക്കുക?';
+
+  @override
+  String get pointDeletedSuccessfully => 'ബിന്ദു വിജയകരമായി ഇല്ലാതാക്കി';
+
+  @override
+  String get errorDeletingPoint => 'ബിന്ദു ഇല്ലാതാക്കൽ പിശകുണ്ടായി';
+
+  @override
+  String get errorLoadingSavedPoints =>
+      'സേവ് ചെയ്ത ബിന്ദുക്കൾ ലോഡ് ചെയ്യൽ പിശകുണ്ടായി';
+
+  @override
+  String get noPointsFound => 'ബിന്ദുക്കൾ കണ്ടെത്തിയില്ല';
+
+  @override
+  String get noSavedPointsYet => 'ഇതുവരെ സേവ് ചെയ്ത ബിന്ദുക്കളില്ല';
+
+  @override
+  String get tryAdjustingSearch => 'തിരയൽ സമായോജിപ്പിച്ച് ശ്രമിക്കുക';
+
+  @override
+  String get startCapturingPoints => 'ബിന്ദുക്കൾ പിടിക്കൽ ആരംഭിക്കുക';
+
+  @override
+  String get unnamedPoint => 'പേരില്ലാത്ത ബിന്ദു';
+
+  @override
+  String get analysisResults => 'വിശകലന ഫലങ്ങൾ';
+
+  @override
+  String get landFeature => 'ഭൂപ്രകൃതി';
+
+  @override
+  String get vegetationCoverage => 'വനസമ്പത്ത് കവറേജ്';
+
+  @override
+  String get waterCoverage => 'ജല കവറേജ്';
+
+  @override
+  String get elevationEstimate => 'ഉയരം അനുമാനം';
+
+  @override
+  String get confidence => 'വിശ്വാസം';
+
+  @override
+  String get notes => 'കുറിപ്പുകൾ';
+
+  @override
+  String get useDarkTheme => 'ഡാർക്ക് തീം ഉപയോഗിക്കുക';
+
+  @override
+  String get landMapVersion => 'ഭൂപട പതിപ്പ്';
+
+  @override
+  String get aiPoweredDescription => 'എ.ഐ. പ്രവർത്തിപ്പിച്ച വിവരണം';
+
+  @override
+  String get photoCapturedSuccessfully =>
+      'ഫോട്ടോ വിജയകരമായി ക്യാപ്ചർ ചെയ്ത് സേവ് ചെയ്തു!';
+
+  @override
+  String get errorCapturingPhoto => 'ഫോട്ടോ ക്യാപ്ചർ ചെയ്യൽ പിശകുണ്ടായി';
+
+  @override
+  String get imageImportedSuccessfully => 'ഇമേജ് വിജയകരമായി ഇമ്പോർട്ട് ചെയ്തു!';
+
+  @override
+  String get errorImportingImage => 'ഇമേജ് ഇമ്പോർട്ട് ചെയ്യൽ പിശകുണ്ടായി';
+
+  @override
+  String get cannotSwitchCamera => 'ക്യാമറ സ്വിച്ച് ചെയ്യാൻ കഴിയില്ല';
+
+  @override
+  String get initializingCamera => 'ക്യാമറ പ്രാരംഭിക്കുന്നു...';
+
+  @override
+  String get cameraNotAvailable => 'ക്യാമറ ലഭ്യമല്ല';
+
+  @override
+  String get routeNotFound => 'റൂട്ട് കണ്ടെത്തിയില്ല';
 }
 
 class AppLocalizationsKn extends AppLocalizations {
@@ -1269,4 +1915,122 @@ class AppLocalizationsKn extends AppLocalizations {
 
   @override
   String get dark => 'ಡಾರ್ಕ್';
+
+  @override
+  String get search => 'ಹುಡುಕಿ';
+
+  @override
+  String get searchSavedPoints => 'ಉಳಿಸಿದ ಬಿಂದುಗಳನ್ನು ಹುಡುಕಿ';
+
+  @override
+  String get sortBy => 'ಸರಿಹೊಂದಿಸಿ';
+
+  @override
+  String get date => 'ದಿನಾಂಕ';
+
+  @override
+  String get name => 'ಹೆಸರು';
+
+  @override
+  String get ascending => 'ಆರೋಹಿ';
+
+  @override
+  String get descending => 'ಅವರೋಹಿ';
+
+  @override
+  String get close => 'ಮುಚ್ಚಿ';
+
+  @override
+  String get deletePoint => 'ಬಿಂದುವನ್ನು ತೆಗೆದುಹಾಕಿ';
+
+  @override
+  String get deleteConfirmation => 'ತೆಗೆದುಹಾಕಲು ಖಚಿತಪಡಿಸಿ';
+
+  @override
+  String get areYouSureDeletePoint =>
+      'ನೀವು ಈ ಬಿಂದುವನ್ನು ತೆಗೆದುಹಾಕಲು ಖಚಿತವಾಗಿದ್ದೀರಾ?';
+
+  @override
+  String get pointDeletedSuccessfully =>
+      'ಬಿಂದುವನ್ನು ಯಶಸ್ವಿಯಾಗಿ ತೆಗೆದುಹಾಕಲಾಗಿದೆ';
+
+  @override
+  String get errorDeletingPoint => 'ಬಿಂದುವನ್ನು ತೆಗೆದುಹಾಕುವಲ್ಲಿ ತಪ್ಪು';
+
+  @override
+  String get errorLoadingSavedPoints =>
+      'ಉಳಿಸಿದ ಬಿಂದುಗಳನ್ನು ಲೋಡ್ ಮಾಡುವಲ್ಲಿ ತಪ್ಪು';
+
+  @override
+  String get noPointsFound => 'ಬಿಂದುಗಳು ಕಂಡುಬಾರದಿದೆ';
+
+  @override
+  String get noSavedPointsYet => 'ಅದುವರೆಗೂ ಯಾವುದೇ ಬಿಂದುಗಳು ಉಳಿಸಲ್ಪಟ್ಟಿಲ್ಲ';
+
+  @override
+  String get tryAdjustingSearch =>
+      'ಹುಡುಕುವಿಕೆಯನ್ನು ಸರಿಹೊಂದಿಸಿ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ';
+
+  @override
+  String get startCapturingPoints =>
+      'ಬಿಂದುಗಳನ್ನು ಪತ್ತೆ ಹಚ್ಚುವುದನ್ನು ಪ್ರಾರಂಭಿಸಿ';
+
+  @override
+  String get unnamedPoint => 'ಹೆಸರಿಲ್ಲದ ಬಿಂದುವು';
+
+  @override
+  String get analysisResults => 'ವಿಶ್ಲೇಷಣೆ ಫಲಿತಾಂಶಗಳು';
+
+  @override
+  String get landFeature => 'ಭೂಮಿಯ ವಿಶೇಷತೆ';
+
+  @override
+  String get vegetationCoverage => 'ಸಸ್ಯಸಂಪತ್ತು ಆವರಣ';
+
+  @override
+  String get waterCoverage => 'ನೀರಿನ ಆವರಣ';
+
+  @override
+  String get elevationEstimate => 'ಆಂತರಿಕ ಅಂದಾಜು';
+
+  @override
+  String get confidence => 'ವಿಶ್ವಾಸ';
+
+  @override
+  String get notes => 'ಟಿಪ್ಪಣಿಗಳು';
+
+  @override
+  String get useDarkTheme => 'ಡಾರ್ಕ್ ಥೀಮ್ ಬಳಸಿ';
+
+  @override
+  String get landMapVersion => 'ಭೂಮಿ ನಕ್ಷೆ ಆವೃತ್ತಿ';
+
+  @override
+  String get aiPoweredDescription => 'AI ಪ್ರವರ್ತಿತ ವಿವರಣೆ';
+
+  @override
+  String get photoCapturedSuccessfully =>
+      'ಫೋಟೋ ಯಶಸ್ವಿಯಾಗಿ ಕ್ಯಾಪ್ಚರ್ ಮಾಡಿ ಸೇವ್ ಮಾಡಲಾಗಿದೆ!';
+
+  @override
+  String get errorCapturingPhoto => 'ಫೋಟೋ ಕ್ಯಾಪ್ಚರ್ ಮಾಡುವಲ್ಲಿ ತಪ್ಪು';
+
+  @override
+  String get imageImportedSuccessfully =>
+      'ಇಮೇಜ್ ಯಶಸ್ವಿಯಾಗಿ ಇಂಪೋರ್ಟ್ ಮಾಡಲಾಗಿದೆ!';
+
+  @override
+  String get errorImportingImage => 'ಇಮೇಜ್ ಇಂಪೋರ್ಟ್ ಮಾಡುವಲ್ಲಿ ತಪ್ಪು';
+
+  @override
+  String get cannotSwitchCamera => 'ಕ್ಯಾಮೆರಾ ಬದಲಾಯಿಸಲು ಸಾಧ್ಯವಿಲ್ಲ';
+
+  @override
+  String get initializingCamera => 'ಕ್ಯಾಮೆರಾ ಆರಂಭಿಸಲಾಗುತ್ತಿದೆ...';
+
+  @override
+  String get cameraNotAvailable => 'ಕ್ಯಾಮೆರಾ ಲಭ್ಯವಿಲ್ಲ';
+
+  @override
+  String get routeNotFound => 'ಮಾರ್ಗ ಕಂಡುಬಂದಿಲ್ಲ';
 }

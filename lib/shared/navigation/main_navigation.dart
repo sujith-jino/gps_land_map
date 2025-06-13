@@ -67,8 +67,6 @@ class _MainNavigationState extends State<MainNavigation> {
         },
         children: _pages,
       ),
-      floatingActionButton: null,
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: _onItemTapped,

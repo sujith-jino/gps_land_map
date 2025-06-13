@@ -49,9 +49,10 @@ class _SavedPointsPageState extends State<SavedPointsPage> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error loading saved points: $e'),
+            content: Text('${l10n.errorLoadingSavedPoints}: $e'),
           ),
         );
       }
@@ -94,8 +95,9 @@ class _SavedPointsPageState extends State<SavedPointsPage> {
             comparison = a.latitude.compareTo(b.latitude);
             break;
           case 'name':
-            final aName = a.notes ?? 'Unnamed Point';
-            final bName = b.notes ?? 'Unnamed Point';
+            final l10n = AppLocalizations.of(context)!;
+            final aName = a.notes ?? l10n.unnamedPoint;
+            final bName = b.notes ?? l10n.unnamedPoint;
             comparison = aName.compareTo(bName);
             break;
         }
@@ -108,149 +110,135 @@ class _SavedPointsPageState extends State<SavedPointsPage> {
   void _showSortOptions() {
     showModalBottomSheet(
       context: context,
-      builder: (context) =>
-          Container(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Sort By',
-                  style: Theme
-                      .of(context)
-                      .textTheme
-                      .titleLarge,
-                ),
-                const SizedBox(height: 16),
-                ListTile(
-                  leading: const Icon(Icons.access_time),
-                  title: const Text('Date'),
-                  trailing: _sortBy == 'date' ? const Icon(Icons.check) : null,
-                  onTap: () {
-                    setState(() => _sortBy = 'date');
-                    _sortPoints();
-                    Navigator.pop(context);
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.location_on),
-                  title: const Text('Location'),
-                  trailing: _sortBy == 'location'
-                      ? const Icon(Icons.check)
-                      : null,
-                  onTap: () {
-                    setState(() => _sortBy = 'location');
-                    _sortPoints();
-                    Navigator.pop(context);
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.label),
-                  title: const Text('Name'),
-                  trailing: _sortBy == 'name' ? const Icon(Icons.check) : null,
-                  onTap: () {
-                    setState(() => _sortBy = 'name');
-                    _sortPoints();
-                    Navigator.pop(context);
-                  },
-                ),
-                const Divider(),
-                ListTile(
-                  leading: Icon(
-                      _isAscending ? Icons.arrow_upward : Icons.arrow_downward),
-                  title: Text(_isAscending ? 'Ascending' : 'Descending'),
-                  onTap: () {
-                    setState(() => _isAscending = !_isAscending);
-                    _sortPoints();
-                    Navigator.pop(context);
-                  },
-                ),
-              ],
-            ),
+      builder: (context) {
+        final l10n = AppLocalizations.of(context)!;
+        return Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                l10n.sortBy,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const Icon(Icons.access_time),
+                title: Text(l10n.date),
+                trailing: _sortBy == 'date' ? const Icon(Icons.check) : null,
+                onTap: () {
+                  setState(() => _sortBy = 'date');
+                  _sortPoints();
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.location_on),
+                title: Text(l10n.location),
+                trailing:
+                    _sortBy == 'location' ? const Icon(Icons.check) : null,
+                onTap: () {
+                  setState(() => _sortBy = 'location');
+                  _sortPoints();
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.label),
+                title: Text(l10n.name),
+                trailing: _sortBy == 'name' ? const Icon(Icons.check) : null,
+                onTap: () {
+                  setState(() => _sortBy = 'name');
+                  _sortPoints();
+                  Navigator.pop(context);
+                },
+              ),
+              const Divider(),
+              ListTile(
+                leading: Icon(
+                    _isAscending ? Icons.arrow_upward : Icons.arrow_downward),
+                title: Text(_isAscending ? l10n.ascending : l10n.descending),
+                onTap: () {
+                  setState(() => _isAscending = !_isAscending);
+                  _sortPoints();
+                  Navigator.pop(context);
+                },
+              ),
+            ],
           ),
+        );
+      },
     );
   }
 
   void _showPointDetails(LandPoint point) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
-      builder: (context) =>
-          AlertDialog(
-            title: Text(point.notes ?? 'Land Point'),
-            content: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildDetailRow(
-                      'Latitude', point.latitude.toStringAsFixed(6)),
-                  _buildDetailRow(
-                      'Longitude', point.longitude.toStringAsFixed(6)),
-                  _buildDetailRow('Date', _formatDate(point.timestamp)),
-
-                  if (point.analysis != null) ...[
-                    const SizedBox(height: 16),
-                    Text(
-                      'Analysis Results',
-                      style: Theme
-                          .of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(
+      builder: (context) => AlertDialog(
+        title: Text(point.notes ?? l10n.unnamedPoint),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildDetailRow(l10n.latitude, point.latitude.toStringAsFixed(6)),
+              _buildDetailRow(
+                  l10n.longitude, point.longitude.toStringAsFixed(6)),
+              _buildDetailRow(l10n.date, _formatDate(point.timestamp)),
+              if (point.analysis != null) ...[
+                const SizedBox(height: 16),
+                Text(
+                  l10n.analysisResults,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    _buildDetailRow(
-                        'Land Feature', point.analysis!.dominantLandFeature),
-                    _buildDetailRow('Soil Type', point.analysis!.soilType),
-                    _buildDetailRow('Vegetation',
-                        '${point.analysis!.vegetationPercentage.toStringAsFixed(
-                            1)}%'),
-                    _buildDetailRow('Water Coverage',
-                    '${point.analysis!.waterBodyPercentage.toStringAsFixed(1)}%'),
-                _buildDetailRow('Elevation',
-                    '${point.analysis!.elevationEstimate.toStringAsFixed(1)}m'),
-                _buildDetailRow('Confidence',
-                    '${point.analysis!.confidenceScore.toStringAsFixed(1)}%'),
-                  ],
-
-                  if (point.notes != null) ...[
-                    const SizedBox(height: 16),
-                    Text(
-                      'Notes',
-                      style: Theme
-                          .of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(point.notes!),
-                  ],
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Close'),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _deletePoint(point);
-                },
-                child: Text(
-                  'Delete',
-                  style: TextStyle(color: Colors.red[700]),
                 ),
-              ),
+                const SizedBox(height: 8),
+                _buildDetailRow(
+                    l10n.landFeature, point.analysis!.dominantLandFeature),
+                _buildDetailRow(l10n.soilType, point.analysis!.soilType),
+                _buildDetailRow(l10n.vegetationCoverage,
+                    '${point.analysis!.vegetationPercentage.toStringAsFixed(1)}%'),
+                _buildDetailRow(l10n.waterCoverage,
+                    '${point.analysis!.waterBodyPercentage.toStringAsFixed(1)}%'),
+                _buildDetailRow(l10n.elevationEstimate,
+                    '${point.analysis!.elevationEstimate.toStringAsFixed(1)}m'),
+                _buildDetailRow(l10n.confidence,
+                    '${point.analysis!.confidenceScore.toStringAsFixed(1)}%'),
+              ],
+              if (point.notes != null) ...[
+                const SizedBox(height: 16),
+                Text(
+                  l10n.notes,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                const SizedBox(height: 8),
+                Text(point.notes!),
+              ],
             ],
           ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(l10n.close),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _deletePoint(point);
+            },
+            child: Text(
+              l10n.delete,
+              style: TextStyle(color: Colors.red[700]),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -281,27 +269,26 @@ class _SavedPointsPageState extends State<SavedPointsPage> {
   }
 
   Future<void> _deletePoint(LandPoint point) async {
+    final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) =>
-          AlertDialog(
-            title: const Text('Delete Point'),
-            content: const Text(
-                'Are you sure you want to delete this land point?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: Text(
-                  'Delete',
-                  style: TextStyle(color: Colors.red[700]),
-                ),
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        title: Text(l10n.deletePoint),
+        content: Text(l10n.areYouSureDeletePoint),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(l10n.cancel),
           ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              l10n.delete,
+              style: TextStyle(color: Colors.red[700]),
+            ),
+          ),
+        ],
+      ),
     );
 
     if (confirmed == true) {
@@ -310,8 +297,8 @@ class _SavedPointsPageState extends State<SavedPointsPage> {
         await _loadSavedPoints();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Point deleted successfully'),
+            SnackBar(
+              content: Text(l10n.pointDeletedSuccessfully),
             ),
           );
         }
@@ -319,7 +306,7 @@ class _SavedPointsPageState extends State<SavedPointsPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Error deleting point: $e'),
+              content: Text('${l10n.errorDeletingPoint}: $e'),
             ),
           );
         }
@@ -376,7 +363,7 @@ class _SavedPointsPageState extends State<SavedPointsPage> {
           child: TextField(
             controller: _searchController,
             decoration: InputDecoration(
-              hintText: 'Search saved points...',
+              hintText: l10n?.searchSavedPoints ?? 'Search saved points...',
               prefixIcon: const Icon(Icons.search),
               suffixIcon: _searchController.text.isNotEmpty
                   ? IconButton(
@@ -416,6 +403,7 @@ class _SavedPointsPageState extends State<SavedPointsPage> {
   }
 
   Widget _buildEmptyState() {
+    final l10n = AppLocalizations.of(context)!;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -428,28 +416,20 @@ class _SavedPointsPageState extends State<SavedPointsPage> {
           const SizedBox(height: 16),
           Text(
             _searchController.text.isNotEmpty
-                ? 'No points found for your search'
-                : 'No saved points yet',
-            style: Theme
-                .of(context)
-                .textTheme
-                .titleMedium
-                ?.copyWith(
-              color: Colors.grey[600],
-            ),
+                ? l10n.noPointsFound
+                : l10n.noSavedPointsYet,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: Colors.grey[600],
+                ),
           ),
           const SizedBox(height: 8),
           Text(
             _searchController.text.isNotEmpty
-                ? 'Try adjusting your search terms'
-                : 'Start by capturing some land points',
-            style: Theme
-                .of(context)
-                .textTheme
-                .bodyMedium
-                ?.copyWith(
-              color: Colors.grey[600],
-            ),
+                ? l10n.tryAdjustingSearch
+                : l10n.startCapturingPoints,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Colors.grey[600],
+                ),
           ),
         ],
       ),
@@ -457,6 +437,7 @@ class _SavedPointsPageState extends State<SavedPointsPage> {
   }
 
   Widget _buildPointCard(LandPoint point) {
+    final l10n = AppLocalizations.of(context)!;
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
@@ -465,13 +446,11 @@ class _SavedPointsPageState extends State<SavedPointsPage> {
           backgroundColor: Theme.of(context).primaryColor.withAlpha(25),
           child: Icon(
             Icons.location_on,
-            color: Theme
-                .of(context)
-                .primaryColor,
+            color: Theme.of(context).primaryColor,
           ),
         ),
         title: Text(
-          point.notes ?? 'Unnamed Point',
+          point.notes ?? l10n.unnamedPoint,
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
         subtitle: Column(
@@ -479,8 +458,7 @@ class _SavedPointsPageState extends State<SavedPointsPage> {
           children: [
             const SizedBox(height: 4),
             Text(
-              '${point.latitude.toStringAsFixed(4)}, ${point.longitude
-                  .toStringAsFixed(4)}',
+              '${point.latitude.toStringAsFixed(4)}, ${point.longitude.toStringAsFixed(4)}',
               style: TextStyle(color: Colors.grey[600]),
             ),
             const SizedBox(height: 4),
@@ -496,9 +474,7 @@ class _SavedPointsPageState extends State<SavedPointsPage> {
               Text(
                 point.analysis!.dominantLandFeature,
                 style: TextStyle(
-                  color: Theme
-                      .of(context)
-                      .primaryColor,
+                  color: Theme.of(context).primaryColor,
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                 ),

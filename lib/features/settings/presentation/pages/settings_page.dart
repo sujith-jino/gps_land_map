@@ -76,7 +76,7 @@ class SettingsPage extends StatelessWidget {
               SwitchListTile(
                 secondary: const Icon(Icons.dark_mode),
                 title: Text(l10n.darkMode),
-                subtitle: const Text('Use dark theme'),
+                subtitle: Text(l10n.useDarkTheme),
                 value: themeProvider.isDarkMode,
                 onChanged: (value) {
                   themeProvider.toggleDarkMode(value);
@@ -88,7 +88,7 @@ class SettingsPage extends StatelessWidget {
               ListTile(
                 leading: const Icon(Icons.info),
                 title: Text(l10n.about),
-                subtitle: const Text('Land Map v1.0.0'),
+                subtitle: Text(l10n.landMapVersion),
                 onTap: () => _showAbout(context),
               ),
             ],
@@ -195,14 +195,14 @@ class SettingsPage extends StatelessWidget {
   }
 
   void _showAbout(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     showAboutDialog(
       context: context,
-      applicationName: 'Land Map',
+      applicationName: l10n.appTitle,
       applicationVersion: '1.0.0',
       applicationIcon: const Icon(Icons.map, size: 48),
-      children: const [
-        Text(
-            'AI-powered land mapping application using GPS and camera technology.'),
+      children: [
+        Text(l10n.aiPoweredDescription),
       ],
     );
   }
