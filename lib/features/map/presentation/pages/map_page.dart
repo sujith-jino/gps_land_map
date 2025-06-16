@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show Factory;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:async';
+import '../../../../core/services/database_service.dart';
+import '../../../../core/models/land_point.dart';
+import '../../../saved_points/presentation/pages/saved_points_page.dart';
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
@@ -20,17 +23,18 @@ class _MapPageState extends State<MapPage> {
 
   // Walk Mode Features
   bool _walkMode = false;
-  bool _isWalking = false; // Track if user is actually moving
+  bool _isWalking = false;
   LatLng? _lastPosition;
+  LatLng? _lastCaptureLocation;
   DateTime? _lastMoveTime;
   static const int maxPoints = 4;
-  static const double movementThreshold = 2.0; // meters
-  static const int stationaryTimeout = 5; // seconds
+  static const double movementThreshold = 1.5; // meters - more accurate
+  static const int stationaryTimeout = 3; // seconds - more responsive
+  static const double captureThreshold = 3.0; // meters - more precise
 
   // Points and Tracking
   final Set<Marker> _markers = {};
   final List<LatLng> _capturedPoints = [];
-  final List<Map<String, dynamic>> _savedPoints = [];
   final List<LatLng> _walkPath = [];
   final Set<Polyline> _polylines = {};
   double _walkDistance = 0.0;
@@ -38,6 +42,9 @@ class _MapPageState extends State<MapPage> {
 
   // GPS Tracking
   StreamSubscription<Position>? _positionStream;
+
+  // Database Service
+  final DatabaseService _databaseService = DatabaseService();
 
   @override
   void initState() {
@@ -72,7 +79,7 @@ class _MapPageState extends State<MapPage> {
       }
 
       final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        desiredAccuracy: LocationAccuracy.bestForNavigation,
       );
 
       if (!mounted) return;
@@ -86,187 +93,75 @@ class _MapPageState extends State<MapPage> {
         );
       }
     } catch (e) {
-      // Ignore errors for clean interface
+      // Handle error silently
     }
   }
 
   void _onMapTap(LatLng position) {
-    // No tap functionality
-  }
-
-  void _addCapturePoint(LatLng position) {
-    // Check if maximum points reached
-    if (_capturedPoints.length >= maxPoints) {
-      _showErrorNotification(
-          'Maximum $maxPoints points allowed! Complete current square first.');
-      return;
-    }
-
-    // Check if point already exists nearby (within 5 meters)
-    for (LatLng existingPoint in _capturedPoints) {
-      double distance = Geolocator.distanceBetween(
-        existingPoint.latitude,
-        existingPoint.longitude,
-        position.latitude,
-        position.longitude,
-      );
-
-      if (distance < 5.0) {
-        _showErrorNotification(
-            'Already pointed here! Please choose another area.');
-        return;
-      }
-    }
-
-    _showPointDetailsDialog(position);
+    // No tap functionality - only walk mode capturing
   }
 
   void _addPointDuringWalk() {
-    if (_currentLocation == null) return;
-
-    // Check if maximum points reached
-    if (_capturedPoints.length >= maxPoints) {
-      _showErrorNotification(
-          'Maximum $maxPoints points reached! Complete current square first.');
+    if (!_walkMode || _currentLocation == null) {
+      _showErrorNotification('Please start walk mode first!');
       return;
     }
 
-    // Check if point already exists nearby (within 5 meters)
-    for (LatLng existingPoint in _capturedPoints) {
-      double distance = Geolocator.distanceBetween(
-        existingPoint.latitude,
-        existingPoint.longitude,
+    if (_capturedPoints.length >= maxPoints) {
+      _showErrorNotification('Maximum $maxPoints points reached!');
+      return;
+    }
+
+    // Check if trying to capture at same location as any previous point
+    for (int i = 0; i < _capturedPoints.length; i++) {
+      double distanceFromExistingPoint = Geolocator.distanceBetween(
+        _capturedPoints[i].latitude,
+        _capturedPoints[i].longitude,
         _currentLocation!.latitude,
         _currentLocation!.longitude,
       );
 
-      if (distance < 5.0) {
+      if (distanceFromExistingPoint < captureThreshold) {
         _showErrorNotification(
-            'Already pointed here! Please walk to another area.');
+            '📍 Already captured a point here!\nPlease move to another location to capture a new point');
         return;
       }
     }
 
-    _showPointDetailsDialog(_currentLocation!);
+    _savePointDirectly(_currentLocation!);
+    setState(() {
+      _lastCaptureLocation = _currentLocation;
+    });
   }
 
-  void _showPointDetailsDialog(LatLng position) {
-    final TextEditingController descriptionController = TextEditingController();
+  void _savePointDirectly(LatLng position) {
+    setState(() {
+      _capturedPoints.add(position);
+      _lastCaptureLocation = position;
 
-    // Calculate distance from reference point
-    double distanceFromReference = 0.0;
-    String distanceLabel = '📏 Distance:';
+      _markers.add(
+        Marker(
+          markerId: MarkerId('point_${_capturedPoints.length}'),
+          position: position,
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+              BitmapDescriptor.hueGreen),
+          infoWindow: InfoWindow(
+            title: '📍 Point ${_capturedPoints.length}',
+            snippet: '${position.latitude.toStringAsFixed(6)}, ${position
+                .longitude.toStringAsFixed(6)}',
+          ),
+        ),
+      );
 
-    if (_capturedPoints.isNotEmpty) {
-      LatLng previousPoint = _capturedPoints.last;
-      distanceFromReference = Geolocator.distanceBetween(
-        previousPoint.latitude,
-        previousPoint.longitude,
-        position.latitude,
-        position.longitude,
-      );
-      distanceLabel = '📏 Distance from Point ${_capturedPoints.length}:';
-    } else if (_walkStartPoint != null) {
-      distanceFromReference = Geolocator.distanceBetween(
-        _walkStartPoint!.latitude,
-        _walkStartPoint!.longitude,
-        position.latitude,
-        position.longitude,
-      );
-      distanceLabel = '📏 Distance from start:';
-    } else if (_currentLocation != null) {
-      distanceFromReference = Geolocator.distanceBetween(
-        _currentLocation!.latitude,
-        _currentLocation!.longitude,
-        position.latitude,
-        position.longitude,
-      );
-      distanceLabel = '📏 Distance from current location:';
+      _updatePointConnections();
+    });
+
+    String message = 'Point ${_capturedPoints.length}/$maxPoints captured!';
+    if (_capturedPoints.length == maxPoints) {
+      message = '🔲 Square completed! Ready to save.';
     }
 
-    // Calculate area if this will be the 4th point
-    double? totalArea;
-    if (_capturedPoints.length == 3) {
-      List<LatLng> allPoints = List.from(_capturedPoints)..add(position);
-      totalArea = _calculatePolygonArea(allPoints);
-    }
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Row(
-            children: [
-              const Icon(Icons.add_location_alt, color: Colors.green),
-              const SizedBox(width: 8),
-              Text('Point ${_capturedPoints.length + 1} of $maxPoints'),
-            ],
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildDetailRow(
-                    '📍 Latitude:', position.latitude.toStringAsFixed(6)),
-                const SizedBox(height: 8),
-                _buildDetailRow(
-                    '📍 Longitude:', position.longitude.toStringAsFixed(6)),
-                const SizedBox(height: 8),
-                _buildDetailRow(distanceLabel,
-                    '${distanceFromReference.toStringAsFixed(2)} m'),
-                if (totalArea != null) ...[
-                  const SizedBox(height: 8),
-                  _buildDetailRow(
-                      '📐 Total Area:', '${totalArea.toStringAsFixed(2)} sq.m'),
-                ],
-                const SizedBox(height: 16),
-                const Text(
-                  'Description:',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: descriptionController,
-                  decoration: InputDecoration(
-                    hintText: 'Enter point description...',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    contentPadding: const EdgeInsets.all(12),
-                  ),
-                  maxLines: 2,
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                _savePointWithDetails(
-                  position,
-                  descriptionController.text.trim(),
-                  distanceFromReference,
-                );
-                Navigator.of(context).pop();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Save Point'),
-            ),
-          ],
-        );
-      },
-    );
+    _showSuccessNotification(message);
   }
 
   double _calculatePolygonArea(List<LatLng> points) {
@@ -281,106 +176,77 @@ class _MapPageState extends State<MapPage> {
       area -= points[j].longitude * points[i].latitude;
     }
 
-    area = (area.abs() / 2.0) *
-        111000 *
-        111000; // Convert to square meters approximately
+    // More accurate area calculation
+    area = (area.abs() / 2.0) * 111320 * 111320 *
+        (1 - 0.00669437999014 * (points[0].latitude * 3.14159 / 180).abs());
     return area;
   }
 
+  double _calculatePerimeter(List<LatLng> points) {
+    if (points.length < 2) return 0.0;
+
+    double perimeter = 0.0;
+    for (int i = 0; i < points.length; i++) {
+      int nextIndex = (i + 1) % points.length;
+      perimeter += Geolocator.distanceBetween(
+        points[i].latitude,
+        points[i].longitude,
+        points[nextIndex].latitude,
+        points[nextIndex].longitude,
+      );
+    }
+    return perimeter;
+  }
+
   Widget _buildDetailRow(String label, String value) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 120,
-          child: Text(
-            label,
-            style: const TextStyle(fontWeight: FontWeight.bold),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            ),
           ),
-        ),
-        Expanded(
-          child: SelectableText(
-            value,
-            style: const TextStyle(fontSize: 16),
+          Expanded(
+            child: SelectableText(
+              value,
+              style: const TextStyle(fontSize: 14),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  void _savePointWithDetails(
-      LatLng position, String description, double distance) {
-    final pointData = {
-      'position': position,
-      'description': description.isEmpty
-          ? 'Point ${_capturedPoints.length + 1}'
-          : description,
-      'latitude': position.latitude,
-      'longitude': position.longitude,
-      'distance': distance,
-      'timestamp': DateTime.now(),
-    };
-
-    setState(() {
-      _capturedPoints.add(position);
-      _savedPoints.add(pointData);
-
-      // Add marker
-      _markers.add(
-        Marker(
-          markerId: MarkerId('capture_point_${_capturedPoints.length}'),
-          position: position,
-          icon:
-              BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
-          infoWindow: InfoWindow(
-            title: '📍 ${pointData['description']}',
-            snippet:
-                'Point ${_capturedPoints.length}: ${position.latitude.toStringAsFixed(6)}, ${position.longitude.toStringAsFixed(6)}',
-          ),
-        ),
-      );
-
-      _updatePointConnections();
-    });
-
-    String message = 'Point ${_capturedPoints.length}/$maxPoints saved! 📍';
-
-    // Show save button if 4 points are completed
-    if (_capturedPoints.length == maxPoints) {
-      message = '🔲 Square completed! Tap SAVE to save all points.';
-    }
-
-    _showSuccessNotification(message);
-  }
-
   void _updatePointConnections() {
-    // Clear existing polylines except walk path
-    _polylines
-        .removeWhere((polyline) => polyline.polylineId.value != 'walk_path');
+    _polylines.removeWhere((polyline) =>
+    polyline.polylineId.value != 'walk_path');
 
     if (_capturedPoints.length >= 2) {
       if (_capturedPoints.length == maxPoints) {
-        // Create square with all 4 points
         List<LatLng> squarePoints = List.from(_capturedPoints);
-        squarePoints.add(_capturedPoints[0]); // Close the square
+        squarePoints.add(_capturedPoints[0]);
 
         _polylines.add(
           Polyline(
             polylineId: const PolylineId('square_outline'),
             points: squarePoints,
             color: Colors.red,
-            width: 4,
+            width: 3,
           ),
         );
       } else {
-        // Connect points in sequence (lines between consecutive points)
         for (int i = 0; i < _capturedPoints.length - 1; i++) {
           _polylines.add(
             Polyline(
               polylineId: PolylineId('line_$i'),
               points: [_capturedPoints[i], _capturedPoints[i + 1]],
               color: Colors.blue,
-              width: 3,
+              width: 2,
             ),
           );
         }
@@ -388,7 +254,7 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
-  void _startWalkTracking() {
+  void _startWalkMode() {
     if (_currentLocation == null) return;
 
     setState(() {
@@ -399,37 +265,23 @@ class _MapPageState extends State<MapPage> {
       _walkStartPoint = _currentLocation;
       _lastPosition = _currentLocation;
       _lastMoveTime = DateTime.now();
+      _lastCaptureLocation = null;
     });
 
-    // Add starting point marker
-    _markers.add(
-      Marker(
-        markerId: const MarkerId('walk_start'),
-        position: _currentLocation!,
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-        infoWindow: const InfoWindow(
-          title: '🚶‍♂️ Walk Start',
-          snippet: 'Starting point of your walk',
-        ),
-      ),
-    );
-
-    // Zoom to current location with good zoom level
     _mapController?.animateCamera(
       CameraUpdate.newLatLngZoom(_currentLocation!, 19.0),
     );
 
     _positionStream = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 1,
+        accuracy: LocationAccuracy.bestForNavigation,
+        distanceFilter: 0,
       ),
     ).listen((Position position) {
       if (!_walkMode) return;
 
       LatLng newPosition = LatLng(position.latitude, position.longitude);
 
-      // Check if user is actually moving
       if (_lastPosition != null) {
         double distanceMoved = Geolocator.distanceBetween(
           _lastPosition!.latitude,
@@ -439,26 +291,26 @@ class _MapPageState extends State<MapPage> {
         );
 
         if (distanceMoved >= movementThreshold) {
-          // User is moving
           setState(() {
             _isWalking = true;
             _lastMoveTime = DateTime.now();
             _walkDistance += distanceMoved;
             _walkPath.add(newPosition);
             _lastPosition = newPosition;
+            _currentLocation = newPosition;
           });
 
-          // Follow user's movement with smooth camera animation
           _mapController?.animateCamera(
             CameraUpdate.newLatLng(newPosition),
           );
 
           _updateWalkPolyline();
         } else {
-          // Check if user has been stationary for too long
           if (_lastMoveTime != null) {
-            int secondsSinceLastMove =
-                DateTime.now().difference(_lastMoveTime!).inSeconds;
+            int secondsSinceLastMove = DateTime
+                .now()
+                .difference(_lastMoveTime!)
+                .inSeconds;
             if (secondsSinceLastMove > stationaryTimeout && _isWalking) {
               setState(() {
                 _isWalking = false;
@@ -469,7 +321,8 @@ class _MapPageState extends State<MapPage> {
       }
     });
 
-    _showSuccessNotification('🚶‍♂️ Walk started! Move to track your path.');
+    _showSuccessNotification(
+        'Walk mode started! Move around and capture points.');
   }
 
   void _stopWalkTracking() {
@@ -477,63 +330,55 @@ class _MapPageState extends State<MapPage> {
     setState(() {
       _walkMode = false;
       _isWalking = false;
+      _lastCaptureLocation = null;
     });
 
-    // Remove start marker
     _markers.removeWhere((marker) => marker.markerId.value == 'walk_start');
-
     _showSuccessNotification(
-        '🛑 Walk stopped! Total distance: ${_walkDistance.toStringAsFixed(1)}m');
+        'Walk stopped! Distance: ${_walkDistance.toStringAsFixed(1)}m');
   }
 
   void _updateWalkPolyline() {
     if (_walkPath.length < 2) return;
 
     setState(() {
-      _polylines
-          .removeWhere((polyline) => polyline.polylineId.value == 'walk_path');
+      _polylines.removeWhere((polyline) =>
+      polyline.polylineId.value == 'walk_path');
       _polylines.add(
         Polyline(
           polylineId: const PolylineId('walk_path'),
           points: _walkPath,
-          color: Colors.purple,
-          width: 3,
-          patterns: [PatternItem.dash(8), PatternItem.gap(4)],
+          color: Colors.purple.withOpacity(0.7),
+          width: 2,
+          patterns: [PatternItem.dash(10), PatternItem.gap(5)],
         ),
       );
     });
   }
 
   void _showSaveDialog() {
-    if (_capturedPoints.length != maxPoints) return;
-
-    // Calculate total area
-    double totalArea = _calculatePolygonArea(_capturedPoints);
-
-    // Calculate perimeter
-    double perimeter = 0.0;
-    for (int i = 0; i < _capturedPoints.length; i++) {
-      int nextIndex = (i + 1) % _capturedPoints.length;
-      perimeter += Geolocator.distanceBetween(
-        _capturedPoints[i].latitude,
-        _capturedPoints[i].longitude,
-        _capturedPoints[nextIndex].latitude,
-        _capturedPoints[nextIndex].longitude,
-      );
+    if (_capturedPoints.length != maxPoints) {
+      _showErrorNotification('Complete all 4 points first!');
+      return;
     }
+
+    double totalArea = _calculatePolygonArea(_capturedPoints);
+    double perimeter = _calculatePerimeter(_capturedPoints);
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
+        final TextEditingController nameController = TextEditingController();
+        final TextEditingController descriptionController = TextEditingController();
+
         return AlertDialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
+              borderRadius: BorderRadius.circular(12)),
           title: const Row(
             children: [
-              Icon(Icons.save, color: Colors.green),
+              Icon(Icons.save, color: Colors.green, size: 24),
               SizedBox(width: 8),
-              Text('Save Land Area'),
+              Text('Save Land Area', style: TextStyle(fontSize: 18)),
             ],
           ),
           content: SingleChildScrollView(
@@ -541,44 +386,88 @@ class _MapPageState extends State<MapPage> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Land Area Summary:',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
+                const Text('📊 Area Summary', style: TextStyle(
+                    fontWeight: FontWeight.bold, fontSize: 16)),
                 const SizedBox(height: 12),
-                _buildDetailRow(
-                    '📐 Total Area:', '${totalArea.toStringAsFixed(2)} sq.m'),
-                const SizedBox(height: 8),
-                _buildDetailRow(
-                    '📏 Perimeter:', '${perimeter.toStringAsFixed(2)} m'),
-                const SizedBox(height: 8),
-                _buildDetailRow('📍 Points:', '$maxPoints corners'),
-                const SizedBox(height: 16),
-
-                // Show all points
-                const Text(
-                  'Corner Points:',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    children: [
+                      _buildDetailRow(
+                          'Area:', '${totalArea.toStringAsFixed(2)} m²'),
+                      _buildDetailRow(
+                          'Perimeter:', '${perimeter.toStringAsFixed(2)} m'),
+                      _buildDetailRow('Points:', '$maxPoints corners'),
+                      _buildDetailRow('Walk Distance:',
+                          '${_walkDistance.toStringAsFixed(1)} m'),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 8),
-                for (int i = 0; i < _savedPoints.length; i++)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Point ${i + 1}: ${_savedPoints[i]['description']}',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        Text(
-                            'Lat: ${_savedPoints[i]['latitude'].toStringAsFixed(6)}'),
-                        Text(
-                            'Lng: ${_savedPoints[i]['longitude'].toStringAsFixed(6)}'),
-                        if (i < _savedPoints.length - 1) const Divider(),
-                      ],
+                const SizedBox(height: 16),
+                Material(
+                  child: TextField(
+                    controller: nameController,
+                    decoration: InputDecoration(
+                      labelText: 'Area Name',
+                      hintText: 'Enter name for this area',
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8)),
+                      contentPadding: const EdgeInsets.all(12),
                     ),
                   ),
+                ),
+                const SizedBox(height: 12),
+                Material(
+                  child: TextField(
+                    controller: descriptionController,
+                    decoration: InputDecoration(
+                      labelText: 'Description',
+                      hintText: 'Enter description (optional)',
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8)),
+                      contentPadding: const EdgeInsets.all(12),
+                    ),
+                    maxLines: 2,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                const Text('📍 Corner Points', style: TextStyle(
+                    fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(height: 8),
+                Container(
+                  height: 150,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey[300]!),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: ListView.builder(
+                    itemCount: _capturedPoints.length,
+                    itemBuilder: (context, index) {
+                      final point = _capturedPoints[index];
+                      return ListTile(
+                        dense: true,
+                        leading: CircleAvatar(
+                          radius: 12,
+                          backgroundColor: Colors.green,
+                          child: Text('${index + 1}', style: const TextStyle(
+                              color: Colors.white, fontSize: 12)),
+                        ),
+                        title: Text('Point ${index + 1}',
+                            style: const TextStyle(
+                                fontSize: 14, fontWeight: FontWeight.bold)),
+                        subtitle: Text(
+                          'Lat: ${point.latitude.toStringAsFixed(6)}\nLng: ${point.longitude.toStringAsFixed(6)}',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      );
+                    },
+                  ),
+                ),
               ],
             ),
           ),
@@ -588,13 +477,16 @@ class _MapPageState extends State<MapPage> {
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: () {
-                _saveAllPoints(totalArea, perimeter);
+              onPressed: () async {
+                await _saveAreaToDatabase(nameController.text.trim(),
+                    descriptionController.text.trim(), totalArea, perimeter);
                 Navigator.of(context).pop();
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
                 foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
               ),
               child: const Text('Save'),
             ),
@@ -604,67 +496,119 @@ class _MapPageState extends State<MapPage> {
     );
   }
 
-  void _saveAllPoints(double area, double perimeter) {
-    // Here you would typically save to database
-    // For now, we'll just clear and show success
+  Future<void> _saveAreaToDatabase(String name, String description, double area,
+      double perimeter) async {
+    try {
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
 
-    setState(() {
-      _capturedPoints.clear();
-      _savedPoints.clear();
-      _markers.clear();
-      _polylines.clear();
-      _walkPath.clear();
-      _walkDistance = 0.0;
-      _walkStartPoint = null;
-    });
+      // Save each point as a LandPoint to the database
+      for (int i = 0; i < _capturedPoints.length; i++) {
+        final point = _capturedPoints[i];
+        final landPoint = LandPoint(
+          id: '${DateTime.now().millisecondsSinceEpoch}_$i',
+          latitude: point.latitude,
+          longitude: point.longitude,
+          timestamp: DateTime.now(),
+          notes: name.isEmpty
+              ? 'Land Area Point ${i + 1}'
+              : '$name - Point ${i + 1}',
+          // You can add analysis data here if needed
+        );
 
-    _showSuccessNotification(
-        '✅ Land area saved successfully!\nArea: ${area.toStringAsFixed(2)} sq.m');
+        await _databaseService.saveLandPoint(landPoint);
+      }
+
+      // Clear the current points and reset the map
+      setState(() {
+        _capturedPoints.clear();
+        _markers.clear();
+        _polylines.clear();
+        _walkPath.clear();
+        _walkDistance = 0.0;
+        _walkStartPoint = null;
+        _lastCaptureLocation = null;
+        _walkMode = false;
+        _isWalking = false;
+      });
+
+      _positionStream?.cancel();
+
+      // Hide loading indicator
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      _showSuccessNotification(
+          'Area saved successfully! ${area.toStringAsFixed(2)} m²');
+
+      // Navigate to SavedPointsPage immediately
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const SavedPointsPage(),
+          ),
+        );
+      }
+    } catch (e) {
+      // Hide loading indicator if still showing
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+      _showErrorNotification('Failed to save area: $e');
+    }
   }
 
   void _toggleMapType() {
     setState(() {
-      _currentMapType = _currentMapType == MapType.normal
-          ? MapType.satellite
-          : MapType.normal;
+      _currentMapType =
+      _currentMapType == MapType.normal ? MapType.satellite : MapType.normal;
     });
-
     _showSuccessNotification(_currentMapType == MapType.satellite
-        ? '🛰️ Satellite View Enabled'
-        : '🗺️ Default Map View Enabled');
-  }
-
-  void _zoomIn() async {
-    if (_mapController != null) {
-      final currentZoom = await _mapController!.getZoomLevel();
-      _mapController!.animateCamera(
-        CameraUpdate.zoomTo(currentZoom + 1),
-      );
-    }
-  }
-
-  void _zoomOut() async {
-    if (_mapController != null) {
-      final currentZoom = await _mapController!.getZoomLevel();
-      _mapController!.animateCamera(
-        CameraUpdate.zoomTo(currentZoom - 1),
-      );
-    }
+        ? 'Satellite View'
+        : 'Normal View');
   }
 
   void _showErrorNotification(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.error, color: Colors.white),
-            const SizedBox(width: 8),
-            Expanded(child: Text(message)),
-          ],
+        content: Container(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Icon(Icons.warning_rounded,
+                    color: Colors.white, size: 18),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  message,
+                  style: const TextStyle(
+                      fontSize: 14, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
         ),
-        backgroundColor: Colors.red,
+        backgroundColor: Colors.red[600],
         behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 3),
+        duration: const Duration(seconds: 4),
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 6,
       ),
     );
   }
@@ -672,16 +616,36 @@ class _MapPageState extends State<MapPage> {
   void _showSuccessNotification(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle, color: Colors.white),
-            const SizedBox(width: 8),
-            Expanded(child: Text(message)),
-          ],
+        content: Container(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Icon(Icons.check_circle_rounded,
+                    color: Colors.white, size: 18),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  message,
+                  style: const TextStyle(
+                      fontSize: 14, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
         ),
-        backgroundColor: Colors.green,
+        backgroundColor: Colors.green[600],
         behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
+        duration: const Duration(seconds: 3),
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 6,
       ),
     );
   }
@@ -692,88 +656,48 @@ class _MapPageState extends State<MapPage> {
       builder: (BuildContext context) {
         return AlertDialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
+              borderRadius: BorderRadius.circular(12)),
           title: Row(
             children: [
-              const Icon(Icons.list, color: Colors.blue),
+              const Icon(Icons.list, color: Colors.blue, size: 24),
               const SizedBox(width: 8),
-              Text('Points (${_capturedPoints.length}/$maxPoints)'),
-              if (_capturedPoints.length == maxPoints)
-                const Text(' 🔲', style: TextStyle(fontSize: 20)),
+              Text('Current Points (${_capturedPoints.length}/$maxPoints)'),
+              if (_capturedPoints.length == maxPoints) const Text(
+                  ' ✅', style: TextStyle(fontSize: 16)),
             ],
           ),
           content: SizedBox(
             width: double.maxFinite,
-            height: 400,
-            child: _savedPoints.isEmpty
-                ? const Center(
-                    child: Text('No points saved yet'),
-                  )
+            height: 300,
+            child: _capturedPoints.isEmpty
+                ? const Center(child: Text('No points captured yet'))
                 : ListView.builder(
-                    itemCount: _savedPoints.length,
+                    itemCount: _capturedPoints.length,
                     itemBuilder: (context, index) {
-                      final point = _savedPoints[index];
-
+                      final point = _capturedPoints[index];
                       return Card(
                         margin: const EdgeInsets.only(bottom: 8),
                         child: ListTile(
                           leading: CircleAvatar(
                             backgroundColor: Colors.green,
-                            child: Text(
-                              '${index + 1}',
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold),
-                            ),
+                            radius: 16,
+                            child: Text('${index + 1}', style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold)),
                           ),
-                          title: Text(
-                            point['description'],
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                  '📍 ${point['latitude'].toStringAsFixed(6)}, ${point['longitude'].toStringAsFixed(6)}'),
-                              Text(
-                                  '📏 Distance: ${point['distance'].toStringAsFixed(2)}m'),
-                              Text(
-                                  '🕒 ${_formatTimestamp(point['timestamp'])}'),
-                            ],
-                          ),
-                          isThreeLine: true,
-                          trailing: PopupMenuButton<String>(
-                            onSelected: (value) {
-                              if (value == 'navigate') {
-                                _navigateToPoint(point['position']);
-                                Navigator.of(context).pop();
-                              } else if (value == 'delete') {
-                                _deletePoint(index);
-                              }
+                          title: Text('Point ${index + 1}',
+                              style: const TextStyle(fontWeight: FontWeight
+                                  .bold)),
+                          subtitle: Text(
+                              '${point.latitude.toStringAsFixed(6)}, ${point
+                                  .longitude.toStringAsFixed(6)}'),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.navigation, color: Colors
+                                .blue),
+                            onPressed: () {
+                              _navigateToPoint(point);
+                              Navigator.of(context).pop();
                             },
-                            itemBuilder: (BuildContext context) => [
-                              const PopupMenuItem<String>(
-                                value: 'navigate',
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.navigation, color: Colors.blue),
-                                    SizedBox(width: 8),
-                                    Text('Navigate'),
-                                  ],
-                                ),
-                              ),
-                              const PopupMenuItem<String>(
-                                value: 'delete',
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.delete, color: Colors.red),
-                                    SizedBox(width: 8),
-                                    Text('Delete'),
-                                  ],
-                                ),
-                              ),
-                            ],
                           ),
                         ),
                       );
@@ -781,14 +705,14 @@ class _MapPageState extends State<MapPage> {
                   ),
           ),
           actions: [
-            if (_capturedPoints.length >= maxPoints)
+            if (_capturedPoints.isNotEmpty)
               TextButton(
                 onPressed: () {
                   _clearAllPoints();
                   Navigator.of(context).pop();
                 },
-                child: const Text('Clear All',
-                    style: TextStyle(color: Colors.red)),
+                child: const Text(
+                    'Clear All', style: TextStyle(color: Colors.red)),
               ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
@@ -800,58 +724,64 @@ class _MapPageState extends State<MapPage> {
     );
   }
 
-  String _formatTimestamp(DateTime timestamp) {
-    return '${timestamp.day}/${timestamp.month}/${timestamp.year} ${timestamp.hour}:${timestamp.minute.toString().padLeft(2, '0')}';
-  }
-
   void _navigateToPoint(LatLng position) {
     if (_mapController != null) {
-      _mapController!.animateCamera(
-        CameraUpdate.newLatLngZoom(position, 18.0),
-      );
+      _mapController!.animateCamera(CameraUpdate.newLatLngZoom(position, 18.0));
     }
-    _showSuccessNotification('Navigating to point 🧭');
-  }
-
-  void _deletePoint(int index) {
-    setState(() {
-      _savedPoints.removeAt(index);
-      _capturedPoints.removeAt(index);
-
-      // Rebuild all markers with correct numbering
-      _markers.clear();
-      for (int i = 0; i < _savedPoints.length; i++) {
-        final point = _savedPoints[i];
-        _markers.add(
-          Marker(
-            markerId: MarkerId('capture_point_${i + 1}'),
-            position: point['position'],
-            icon: BitmapDescriptor.defaultMarkerWithHue(
-                BitmapDescriptor.hueGreen),
-            infoWindow: InfoWindow(
-              title: '📍 ${point['description']}',
-              snippet:
-                  'Lat: ${point['latitude'].toStringAsFixed(6)}, Lng: ${point['longitude'].toStringAsFixed(6)}\nDistance: ${point['distance'].toStringAsFixed(1)}m',
-            ),
-          ),
-        );
-      }
-
-      // Update polylines
-      _updatePointConnections();
-    });
-
-    _showSuccessNotification('Point deleted successfully! 🗑️');
+    _showSuccessNotification('Navigating to point');
   }
 
   void _clearAllPoints() {
     setState(() {
-      _savedPoints.clear();
       _capturedPoints.clear();
       _markers.clear();
       _polylines.clear();
     });
-    _showSuccessNotification('All points cleared! 🧹');
+    _showSuccessNotification('All points cleared!');
+  }
+
+  Widget _buildCompactButton({
+    required String heroTag,
+    required VoidCallback onPressed,
+    required Widget icon,
+    required String label,
+    required Color backgroundColor,
+    bool isExtended = true,
+    bool isSmall = false,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      child: isSmall
+          ? FloatingActionButton.small(
+              heroTag: heroTag,
+              onPressed: onPressed,
+              backgroundColor: backgroundColor,
+              child: icon,
+              elevation: 3,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
+            )
+          : SizedBox(
+              height: 36,
+              child: FloatingActionButton.extended(
+                heroTag: heroTag,
+                onPressed: onPressed,
+                backgroundColor: backgroundColor,
+                icon: icon,
+                label: Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 11,
+                  ),
+                ),
+                elevation: 3,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18)),
+              ),
+            ),
+    );
   }
 
   @override
@@ -884,114 +814,67 @@ class _MapPageState extends State<MapPage> {
                   trafficEnabled: false,
                   indoorViewEnabled: true,
                   liteModeEnabled: false,
-                  gestureRecognizers: const <Factory<
-                      OneSequenceGestureRecognizer>>{},
+                  gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+                    Factory<OneSequenceGestureRecognizer>(() =>
+                        EagerGestureRecognizer()),
+                  },
                   minMaxZoomPreference: const MinMaxZoomPreference(1.0, 25.0),
                   cameraTargetBounds: CameraTargetBounds.unbounded,
                 ),
 
-                // Map Controls - Top Left
+                // Map Type Toggle - Top Left (Google Maps style)
                 Positioned(
-                  top: MediaQuery.of(context).padding.top + 16,
-                  left: 16,
-                  child: Column(
-                    children: [
-                      // Map Type Toggle Button
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
+                  top: MediaQuery.of(context).padding.top + 12,
+                  left: 12,
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
                         ),
-                        child: FloatingActionButton(
-                          heroTag: "mapType",
-                          onPressed: _toggleMapType,
-                          backgroundColor: Colors.white,
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: _toggleMapType,
+                        child: Center(
                           child: Icon(
                             _currentMapType == MapType.satellite
-                                ? Icons.map
-                                : Icons.satellite_alt,
-                            color: _currentMapType == MapType.satellite
-                                ? Colors.blue
-                                : Colors.green,
-                            size: 28,
+                                ? Icons.map_outlined
+                                : Icons.satellite_alt_outlined,
+                            color: Colors.grey[700],
+                            size: 20,
                           ),
                         ),
                       ),
-                      const SizedBox(height: 16),
-
-                      // Zoom Controls
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          children: [
-                            // Zoom In
-                            FloatingActionButton(
-                              heroTag: "zoomIn",
-                              onPressed: _zoomIn,
-                              backgroundColor: Colors.white,
-                              mini: true,
-                              child: const Icon(
-                                Icons.add,
-                                color: Colors.blue,
-                                size: 24,
-                              ),
-                            ),
-                            Container(
-                              height: 1,
-                              width: 40,
-                              color: Colors.grey.shade300,
-                            ),
-                            // Zoom Out
-                            FloatingActionButton(
-                              heroTag: "zoomOut",
-                              onPressed: _zoomOut,
-                              backgroundColor: Colors.white,
-                              mini: true,
-                              child: const Icon(
-                                Icons.remove,
-                                color: Colors.blue,
-                                size: 24,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
 
                 // Walk Distance Display
                 if (_walkMode)
                   Positioned(
-                    top: MediaQuery.of(context).padding.top + 16,
-                    right: 16,
+                    top: MediaQuery.of(context).padding.top + 12,
+                    right: 12,
                     child: Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: Colors.blue,
-                        borderRadius: BorderRadius.circular(12),
+                        color: Colors.teal,
+                        borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.blue.withOpacity(0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
+                            color: Colors.teal.withOpacity(0.3),
+                            blurRadius: 6,
+                            offset: const Offset(0, 3),
                           ),
                         ],
                       ),
@@ -999,128 +882,109 @@ class _MapPageState extends State<MapPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           const Icon(Icons.directions_walk,
-                              color: Colors.white),
-                          const SizedBox(width: 8),
+                              color: Colors.white, size: 14),
+                          const SizedBox(width: 4),
                           Text(
-                            '🚶‍♂️ ${_walkDistance.toStringAsFixed(1)}m',
+                            '${_walkDistance.toStringAsFixed(1)}m',
                             style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
                     ),
                   ),
 
-                // Point Button during Walk Mode
-                if (_walkMode && _isWalking)
-                  Positioned(
-                    bottom: 100,
-                    right: 16,
-                    child: FloatingActionButton.extended(
-                      heroTag: "addPoint",
-                      onPressed: _addPointDuringWalk,
-                      backgroundColor: Colors.orange,
-                      icon: const Icon(Icons.add_location, color: Colors.white),
-                      label: const Text(
-                        'Point',
-                        style: TextStyle(
-                            color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-
-                // Save Button when 4 points completed
-                if (_capturedPoints.length == maxPoints)
-                  Positioned(
-                    bottom: 170,
-                    right: 16,
-                    child: FloatingActionButton.extended(
-                      heroTag: "savePoints",
-                      onPressed: _showSaveDialog,
-                      backgroundColor: Colors.green,
-                      icon: const Icon(Icons.save, color: Colors.white),
-                      label: const Text(
-                        'SAVE',
-                        style: TextStyle(
-                            color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-
-                // Walk Mode Toggle Button
+                // Right Side Controls
                 Positioned(
-                  bottom: 100,
-                  right: 16,
-                  child: FloatingActionButton.extended(
-                    heroTag: "walkToggle",
-                    onPressed: () {
-                      setState(() {
-                        _walkMode = !_walkMode;
-                        if (_walkMode) {
-                          _startWalkTracking();
-                        } else {
-                          _stopWalkTracking();
-                        }
-                      });
-                    },
-                    backgroundColor: _walkMode ? Colors.red : Colors.purple,
-                    icon: Icon(
-                      _walkMode ? Icons.stop : Icons.directions_walk,
-                      color: Colors.white,
-                    ),
-                    label: Text(
-                      _walkMode ? 'Stop Walk' : 'Start Walk',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
+                  bottom: 60,
+                  right: 12,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      // Capture Point Button (only during walk mode)
+                      if (_walkMode)
+                        _buildCompactButton(
+                          heroTag: "addPoint",
+                          onPressed: _addPointDuringWalk,
+                          icon: const Icon(Icons.add_location,
+                              color: Colors.white, size: 16),
+                          label: 'Capture',
+                          backgroundColor: Colors.deepOrange,
+                        ),
+
+                      // Save Button (only when 4 points completed)
+                      if (_capturedPoints.length == maxPoints)
+                        _buildCompactButton(
+                          heroTag: "saveButton",
+                          onPressed: _showSaveDialog,
+                          icon: const Icon(Icons.save,
+                              color: Colors.white, size: 16),
+                          label: 'Save Area',
+                          backgroundColor: Colors.green[600]!,
+                        ),
+
+                      // Walk Mode Toggle
+                      _buildCompactButton(
+                        heroTag: "walkToggle",
+                        onPressed: () {
+                          setState(() {
+                            _walkMode = !_walkMode;
+                            if (_walkMode) {
+                              _startWalkMode();
+                            } else {
+                              _stopWalkTracking();
+                            }
+                          });
+                        },
+                        icon: Icon(
+                          _walkMode ? Icons.stop : Icons.directions_walk,
+                          color: Colors.white,
+                          size: 16,
+                        ),
+                        label: _walkMode ? 'Stop' : 'Walk',
+                        backgroundColor:
+                            _walkMode ? Colors.red[600]! : Colors.purple[600]!,
                       ),
-                    ),
+                    ],
                   ),
                 ),
 
-                // Points Counter & View Points Button
+                // Left Side Controls
                 if (_capturedPoints.isNotEmpty)
                   Positioned(
-                    bottom: MediaQuery.of(context).padding.bottom + 16,
-                    left: 16,
+                    bottom: 12,
+                    left: 12,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // View Points Button
-                        Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          child: FloatingActionButton.extended(
-                            heroTag: "viewPoints",
-                            onPressed: _showSavedPointsList,
-                            backgroundColor: Colors.blue,
-                            icon: const Icon(Icons.list, color: Colors.white),
-                            label: const Text(
-                              'View Points',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold),
-                            ),
-                          ),
+                        // View Current Points Button
+                        _buildCompactButton(
+                          heroTag: "viewPoints",
+                          onPressed: _showSavedPointsList,
+                          icon: const Icon(Icons.list,
+                              color: Colors.white, size: 16),
+                          label: 'Points',
+                          backgroundColor: Colors.blue[600]!,
                         ),
+
                         // Points Counter
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
+                              horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
                             color: _capturedPoints.length >= maxPoints
-                                ? Colors.green
-                                : Colors.blue,
-                            borderRadius: BorderRadius.circular(20),
+                                ? Colors.green[600]
+                                : Colors.blue[600],
+                            borderRadius: BorderRadius.circular(12),
                             boxShadow: [
                               BoxShadow(
                                 color: (_capturedPoints.length >= maxPoints
-                                        ? Colors.green
-                                        : Colors.blue)
+                                        ? Colors.green[600]!
+                                        : Colors.blue[600]!)
                                     .withOpacity(0.3),
-                                blurRadius: 8,
+                                blurRadius: 4,
                                 offset: const Offset(0, 2),
                               ),
                             ],
@@ -1129,17 +993,19 @@ class _MapPageState extends State<MapPage> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
-                                  _capturedPoints.length >= maxPoints
-                                      ? Icons.check_box
-                                      : Icons.location_on,
-                                  color: Colors.white,
-                                  size: 16),
-                              const SizedBox(width: 4),
+                                _capturedPoints.length >= maxPoints
+                                    ? Icons.check_circle
+                                    : Icons.location_on,
+                                color: Colors.white,
+                                size: 14,
+                              ),
+                              const SizedBox(width: 3),
                               Text(
-                                '${_capturedPoints.length}/$maxPoints Points${_capturedPoints.length == maxPoints ? ' 🔲' : ''}',
+                                '${_capturedPoints.length}/$maxPoints${_capturedPoints.length == maxPoints ? ' ✅' : ''}',
                                 style: const TextStyle(
                                     color: Colors.white,
-                                    fontWeight: FontWeight.bold),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 11),
                               ),
                             ],
                           ),
