@@ -16,7 +16,7 @@ class MapPage extends StatefulWidget {
 }
 
 class _MapPageState extends State<MapPage> {
-  final int maxPoints = 20;  // Maximum number of points allowed for the polygon
+  final int maxPoints = 4;  // Maximum number of points allowed for the polygon
   GoogleMapController? _mapController;
   LatLng? _currentLocation;
   bool _isLoading = true;
@@ -100,12 +100,44 @@ class _MapPageState extends State<MapPage> {
   }
 
   void _onMapTap(LatLng position) {
-    // No tap functionality - only walk mode capturing
+    if (!_walkMode) return;
+    
+    if (_capturedPoints.length >= maxPoints) {
+      _showErrorNotification('Maximum of $maxPoints points reached for this area');
+      return;
+    }
+    
+    // Check if trying to capture at same location as any previous point
+    for (int i = 0; i < _capturedPoints.length; i++) {
+      double distanceFromExistingPoint = Geolocator.distanceBetween(
+        _capturedPoints[i].latitude,
+        _capturedPoints[i].longitude,
+        position.latitude,
+        position.longitude,
+      );
+
+      if (distanceFromExistingPoint < 5) { // 5 meters threshold
+        _showErrorNotification('Point too close to an existing point');
+        return;
+      }
+    }
+    
+    // Save the tapped position
+    _savePointDirectly(position);
+    
+    // Show success message
+    _showSuccessNotification('Point ${_capturedPoints.length} captured!');
   }
 
   void _addPointDuringWalk() {
     if (!_walkMode || _currentLocation == null) {
       _showErrorNotification('Please start walk mode first!');
+      return;
+    }
+
+    // Check if we've reached the maximum number of points
+    if (_capturedPoints.length >= maxPoints) {
+      _showErrorNotification('Maximum of $maxPoints points reached for this area');
       return;
     }
 
@@ -118,20 +150,20 @@ class _MapPageState extends State<MapPage> {
         _currentLocation!.longitude,
       );
 
-      if (distanceFromExistingPoint < captureThreshold) {
-        _showErrorNotification(
-            '📍 Already captured a point here!\nPlease move to another location to capture a new point');
+      if (distanceFromExistingPoint < 5) { // 5 meters threshold
+        _showErrorNotification('Point too close to an existing point');
         return;
       }
     }
     
+    // Save the point without changing zoom
     _savePointDirectly(_currentLocation!);
-    
+
     // Auto-zoom to the new point
     _mapController?.animateCamera(
       CameraUpdate.newLatLngZoom(_currentLocation!, 19.0),
     );
-    
+
     setState(() {
       _lastCaptureLocation = _currentLocation;
     });
@@ -159,8 +191,41 @@ class _MapPageState extends State<MapPage> {
       );
 
       _updatePointConnections();
+
+      // Show save button when at least 2 points are captured
+      if (_capturedPoints.length >= 2) {
+        _showCaptureButton = true;
+      }
     });
-    
+
+    // Zoom to the captured point with fixed zoom level
+    _mapController?.animateCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(
+          target: position,
+          zoom: 20.0,  // Fixed high zoom level
+          bearing: 0.0,  // North-up orientation
+          tilt: 0.0,    // Top-down view
+        ),
+      ),
+      duration: const Duration(milliseconds: 300),
+    );
+
+    // Disable zoom controls and gestures
+    _mapController?.setMapStyle('''
+      [
+        {
+          "featureType": "all",
+          "elementType": "all",
+          "stylers": [
+            { "saturation": 0 },
+            { "lightness": 0 },
+            { "gamma": 1.0 }
+          ]
+        }
+      ]
+    ''');
+
     // Show distance to previous point if available
     if (_capturedPoints.length > 1) {
       LatLng prevPoint = _capturedPoints[_capturedPoints.length - 2];
@@ -171,6 +236,8 @@ class _MapPageState extends State<MapPage> {
         position.longitude,
       );
       _showSuccessNotification('Point ${_capturedPoints.length} captured!\nDistance from last point: ${distance.toStringAsFixed(1)}m');
+    } else {
+      _showSuccessNotification('Point 1 captured!');
     }
   }
 
@@ -236,7 +303,6 @@ class _MapPageState extends State<MapPage> {
     // Keep only the walk path polyline
     _polylines.removeWhere((polyline) =>
         polyline.polylineId.value != 'walk_path');
-
     // Add lines between all captured points
     if (_capturedPoints.length >= 2) {
       // Add lines between consecutive points
@@ -250,7 +316,6 @@ class _MapPageState extends State<MapPage> {
           ),
         );
       }
-      
       // Add line from last point to first point if more than 2 points
       if (_capturedPoints.length > 2) {
         _polylines.add(
@@ -265,10 +330,8 @@ class _MapPageState extends State<MapPage> {
       }
     }
   }
-
   void _startWalkMode() {
     if (_currentLocation == null) return;
-
     setState(() {
       _walkMode = true;
       _isWalking = false;
@@ -279,12 +342,27 @@ class _MapPageState extends State<MapPage> {
       _lastPosition = _currentLocation;
       _lastMoveTime = DateTime.now();
       _lastCaptureLocation = null;
+      
+      // Clear any existing points when starting a new walk
+      _capturedPoints.clear();
+      _markers.clear();
+      _polylines.clear();
     });
-
+    
+    // Zoom closely to current location when walk mode starts
     _mapController?.animateCamera(
-      CameraUpdate.newLatLngZoom(_currentLocation!, 19.0),
+      CameraUpdate.newCameraPosition(
+        CameraPosition(
+          target: _currentLocation!,
+          zoom: 90.0,  // Increased zoom level for closer view
+          bearing: 0.0,  // Reset bearing for straight view
+          tilt: 0.0,    // Reset tilt for top-down view
+        ),
+      ),
+      duration: const Duration(milliseconds: 500),  // Smooth animation
     );
-
+    
+    _showSuccessNotification('Walk mode started! Tap the capture button to mark points.');
     _positionStream = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.bestForNavigation,
@@ -292,9 +370,7 @@ class _MapPageState extends State<MapPage> {
       ),
     ).listen((Position position) {
       if (!_walkMode) return;
-
       LatLng newPosition = LatLng(position.latitude, position.longitude);
-
       if (_lastPosition != null) {
         double distanceMoved = Geolocator.distanceBetween(
           _lastPosition!.latitude,
@@ -302,7 +378,6 @@ class _MapPageState extends State<MapPage> {
           newPosition.latitude,
           newPosition.longitude,
         );
-
         if (distanceMoved >= movementThreshold) {
           setState(() {
             _isWalking = true;
@@ -312,11 +387,9 @@ class _MapPageState extends State<MapPage> {
             _lastPosition = newPosition;
             _currentLocation = newPosition;
           });
-
           _mapController?.animateCamera(
             CameraUpdate.newLatLng(newPosition),
           );
-
           _updateWalkPolyline();
         } else {
           if (_lastMoveTime != null) {
@@ -333,11 +406,9 @@ class _MapPageState extends State<MapPage> {
         }
       }
     });
-
     _showSuccessNotification(
         'Walk mode started! Move around and capture points.');
   }
-
   void _stopWalkTracking() {
     _positionStream?.cancel();
     setState(() {
@@ -345,15 +416,12 @@ class _MapPageState extends State<MapPage> {
       _isWalking = false;
       _lastCaptureLocation = null;
     });
-
     _markers.removeWhere((marker) => marker.markerId.value == 'walk_start');
     _showSuccessNotification(
         'Walk stopped! Distance: ${_walkDistance.toStringAsFixed(1)}m');
   }
-
   void _updateWalkPolyline() {
     if (_walkPath.length < 2) return;
-
     setState(() {
       _polylines.removeWhere((polyline) =>
       polyline.polylineId.value == 'walk_path');
@@ -368,16 +436,13 @@ class _MapPageState extends State<MapPage> {
       );
     });
   }
-
   void _showSaveDialog() {
     if (_capturedPoints.length < 3) {
       _showErrorNotification('At least 3 points are required to save an area!');
       return;
     }
-
     double totalArea = _calculatePolygonArea(_capturedPoints);
     double perimeter = _calculatePerimeter(_capturedPoints);
-    
     // Auto-close any open info windows
     _mapController?.showMarkerInfoWindow(const MarkerId(''));
 
@@ -386,7 +451,6 @@ class _MapPageState extends State<MapPage> {
       builder: (BuildContext context) {
         final TextEditingController nameController = TextEditingController();
         final TextEditingController descriptionController = TextEditingController();
-
         return AlertDialog(
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12)),
@@ -451,7 +515,6 @@ class _MapPageState extends State<MapPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-
                 const Text('📍 Captured Points', style: TextStyle(
                     fontWeight: FontWeight.bold, fontSize: 16)),
                 const SizedBox(height: 8),
@@ -511,13 +574,11 @@ class _MapPageState extends State<MapPage> {
       },
     );
   }
-
   Future<void> _saveAreaToDatabase(String name, String description, double area,
       double perimeter) async {
     try {
       // Close the save dialog first
       Navigator.of(context).pop();
-
       // Show a more elegant loading overlay
       showDialog(
         context: context,
@@ -558,24 +619,24 @@ class _MapPageState extends State<MapPage> {
           ),
         ),
       );
-
+      // Generate a unique area ID for all points in this area
+      final String areaId = 'area_${DateTime.now().millisecondsSinceEpoch}';
+      
       // Save each point as a LandPoint to the database
       for (int i = 0; i < _capturedPoints.length; i++) {
         final point = _capturedPoints[i];
         final landPoint = LandPoint(
-          id: '${DateTime.now().millisecondsSinceEpoch}_$i',
+          id: '${areaId}_$i', // Use area ID + point index for unique ID
           latitude: point.latitude,
           longitude: point.longitude,
           timestamp: DateTime.now(),
           notes: name.isEmpty
-              ? 'Land Area Point ${i + 1}'
-              : '$name - Point ${i + 1}',
-          // You can add analysis data here if needed
+              ? 'Land Area $areaId - Point ${i + 1}'
+              : '$name (${areaId.substring(0, 6)}) - Point ${i + 1}\n$description',
+          tags: [areaId], // Store area ID as a tag for easy querying
         );
-
         await _databaseService.saveLandPoint(landPoint);
       }
-
       // Clear the current points and reset the map
       setState(() {
         _capturedPoints.clear();
@@ -588,20 +649,16 @@ class _MapPageState extends State<MapPage> {
         _walkMode = false;
         _isWalking = false;
       });
-
       _positionStream?.cancel();
-
       // Hide loading indicator
       if (mounted) {
         Navigator.of(context).pop();
       }
-
       _showSuccessNotification(
           '✅ Area saved successfully! ${area.toStringAsFixed(2)} m²');
 
       // Wait a moment for the success message to be visible
       await Future.delayed(const Duration(milliseconds: 800));
-
       // Navigate to SavedPointsPage with a smooth transition
       if (mounted) {
         Navigator.push(
@@ -633,7 +690,6 @@ class _MapPageState extends State<MapPage> {
       _showErrorNotification('Failed to save area: $e');
     }
   }
-
   void _toggleMapType() {
     setState(() {
       _currentMapType =
@@ -643,7 +699,6 @@ class _MapPageState extends State<MapPage> {
         ? 'Satellite View'
         : 'Normal View');
   }
-
   void _showErrorNotification(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -680,7 +735,6 @@ class _MapPageState extends State<MapPage> {
       ),
     );
   }
-
   void _showSuccessNotification(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -717,7 +771,6 @@ class _MapPageState extends State<MapPage> {
       ),
     );
   }
-
   void _showSavedPointsList() {
     showDialog(
       context: context,
@@ -725,13 +778,23 @@ class _MapPageState extends State<MapPage> {
         return AlertDialog(
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12)),
-          title: Row(
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.list, color: Colors.blue, size: 24),
-              const SizedBox(width: 8),
-              Text('Current Points (${_capturedPoints.length}/$maxPoints)'),
-              if (_capturedPoints.length == maxPoints) const Text(
-                  ' ✅', style: TextStyle(fontSize: 16)),
+              const Text('Current Points', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 4),
+              Text(
+                '${_capturedPoints.length}/$maxPoints points added',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+              ),
+              if (_capturedPoints.length == maxPoints) 
+                Padding(
+                  padding: const EdgeInsets.only(top: 4.0),
+                  child: Text(
+                    'Area complete! Tap "Save Area" to proceed.',
+                    style: TextStyle(color: Theme.of(context).primaryColor, fontSize: 14),
+                  ),
+                ),
             ],
           ),
           content: SizedBox(
@@ -791,14 +854,22 @@ class _MapPageState extends State<MapPage> {
       },
     );
   }
-
   void _navigateToPoint(LatLng position) {
     if (_mapController != null) {
-      _mapController!.animateCamera(CameraUpdate.newLatLngZoom(position, 18.0));
+      _mapController!.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(
+            target: position,
+            zoom: 20.0,  // Increased zoom level for closer view
+            bearing: 0.0,  // Reset bearing for straight view
+            tilt: 0.0,    // Reset tilt for top-down view
+          ),
+        ),
+        duration: const Duration(milliseconds: 500),  // Smooth animation
+      );
     }
     _showSuccessNotification('Navigating to point');
   }
-
   void _clearAllPoints() {
     setState(() {
       _capturedPoints.clear();
@@ -809,7 +880,6 @@ class _MapPageState extends State<MapPage> {
     });
     _showSuccessNotification('All points cleared!');
   }
-
   Widget _buildCompactButton({
     required String heroTag,
     required VoidCallback onPressed,
@@ -853,7 +923,6 @@ class _MapPageState extends State<MapPage> {
             ),
     );
   }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -891,7 +960,6 @@ class _MapPageState extends State<MapPage> {
                   minMaxZoomPreference: const MinMaxZoomPreference(1.0, 25.0),
                   cameraTargetBounds: CameraTargetBounds.unbounded,
                 ),
-
                 // Map Type Toggle - Top Left (Google Maps style)
                 Positioned(
                   top: MediaQuery.of(context).padding.top + 12,
@@ -928,7 +996,6 @@ class _MapPageState extends State<MapPage> {
                     ),
                   ),
                 ),
-
                 // Walk Distance Display
                 if (_walkMode)
                   Positioned(
@@ -965,7 +1032,6 @@ class _MapPageState extends State<MapPage> {
                       ),
                     ),
                   ),
-
                 // Right Side Controls
                 Positioned(
                   bottom: 60,
@@ -999,7 +1065,6 @@ class _MapPageState extends State<MapPage> {
                             ),
                           ],
                         ),
-
                       // Walk Mode Toggle
                       _buildCompactButton(
                         heroTag: "walkToggle",
@@ -1025,7 +1090,6 @@ class _MapPageState extends State<MapPage> {
                     ],
                   ),
                 ),
-
                 // Left Side Controls
                 if (_capturedPoints.isNotEmpty)
                   Positioned(
@@ -1043,48 +1107,7 @@ class _MapPageState extends State<MapPage> {
                           label: 'Points',
                           backgroundColor: Colors.blue[600]!,
                         ),
-
-                        // Points Counter
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: _capturedPoints.length >= maxPoints
-                                ? Colors.green[600]
-                                : Colors.blue[600],
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: (_capturedPoints.length >= maxPoints
-                                        ? Colors.green[600]!
-                                        : Colors.blue[600]!)
-                                    .withOpacity(0.3),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                _capturedPoints.length >= maxPoints
-                                    ? Icons.check_circle
-                                    : Icons.location_on,
-                                color: Colors.white,
-                                size: 14,
-                              ),
-                              const SizedBox(width: 3),
-                              Text(
-                                '${_capturedPoints.length}/99999${_capturedPoints.length == 99999 ? ' ✅' : ''}',
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 11),
-                              ),
-                            ],
-                          ),
-                        ),
+                        // Removed points counter
                       ],
                     ),
                   ),
