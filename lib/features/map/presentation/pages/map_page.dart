@@ -16,6 +16,7 @@ class MapPage extends StatefulWidget {
 }
 
 class _MapPageState extends State<MapPage> {
+  final int maxPoints = 20;  // Maximum number of points allowed for the polygon
   GoogleMapController? _mapController;
   LatLng? _currentLocation;
   bool _isLoading = true;
@@ -24,10 +25,11 @@ class _MapPageState extends State<MapPage> {
   // Walk Mode Features
   bool _walkMode = false;
   bool _isWalking = false;
+  bool _showCaptureButton = false;
   LatLng? _lastPosition;
   LatLng? _lastCaptureLocation;
   DateTime? _lastMoveTime;
-  static const int maxPoints = 4;
+  // Removed maxPoints limit to allow unlimited points
   static const double movementThreshold = 1.5; // meters - more accurate
   static const int stationaryTimeout = 3; // seconds - more responsive
   static const double captureThreshold = 3.0; // meters - more precise
@@ -107,11 +109,6 @@ class _MapPageState extends State<MapPage> {
       return;
     }
 
-    if (_capturedPoints.length >= maxPoints) {
-      _showErrorNotification('Maximum $maxPoints points reached!');
-      return;
-    }
-
     // Check if trying to capture at same location as any previous point
     for (int i = 0; i < _capturedPoints.length; i++) {
       double distanceFromExistingPoint = Geolocator.distanceBetween(
@@ -127,11 +124,19 @@ class _MapPageState extends State<MapPage> {
         return;
       }
     }
-
+    
     _savePointDirectly(_currentLocation!);
+    
+    // Auto-zoom to the new point
+    _mapController?.animateCamera(
+      CameraUpdate.newLatLngZoom(_currentLocation!, 19.0),
+    );
+    
     setState(() {
       _lastCaptureLocation = _currentLocation;
     });
+    
+    _showSuccessNotification('Point ${_capturedPoints.length} captured!');
   }
 
   void _savePointDirectly(LatLng position) {
@@ -155,13 +160,18 @@ class _MapPageState extends State<MapPage> {
 
       _updatePointConnections();
     });
-
-    String message = 'Point ${_capturedPoints.length}/$maxPoints captured!';
-    if (_capturedPoints.length == maxPoints) {
-      message = '🔲 Square completed! Ready to save.';
+    
+    // Show distance to previous point if available
+    if (_capturedPoints.length > 1) {
+      LatLng prevPoint = _capturedPoints[_capturedPoints.length - 2];
+      double distance = Geolocator.distanceBetween(
+        prevPoint.latitude,
+        prevPoint.longitude,
+        position.latitude,
+        position.longitude,
+      );
+      _showSuccessNotification('Point ${_capturedPoints.length} captured!\nDistance from last point: ${distance.toStringAsFixed(1)}m');
     }
-
-    _showSuccessNotification(message);
   }
 
   double _calculatePolygonArea(List<LatLng> points) {
@@ -223,33 +233,35 @@ class _MapPageState extends State<MapPage> {
   }
 
   void _updatePointConnections() {
+    // Keep only the walk path polyline
     _polylines.removeWhere((polyline) =>
-    polyline.polylineId.value != 'walk_path');
+        polyline.polylineId.value != 'walk_path');
 
+    // Add lines between all captured points
     if (_capturedPoints.length >= 2) {
-      if (_capturedPoints.length == maxPoints) {
-        List<LatLng> squarePoints = List.from(_capturedPoints);
-        squarePoints.add(_capturedPoints[0]);
-
+      // Add lines between consecutive points
+      for (int i = 0; i < _capturedPoints.length - 1; i++) {
         _polylines.add(
           Polyline(
-            polylineId: const PolylineId('square_outline'),
-            points: squarePoints,
-            color: Colors.red,
-            width: 3,
+            polylineId: PolylineId('line_${i}_${i + 1}'),
+            points: [_capturedPoints[i], _capturedPoints[i + 1]],
+            color: Colors.blue,
+            width: 2,
           ),
         );
-      } else {
-        for (int i = 0; i < _capturedPoints.length - 1; i++) {
-          _polylines.add(
-            Polyline(
-              polylineId: PolylineId('line_$i'),
-              points: [_capturedPoints[i], _capturedPoints[i + 1]],
-              color: Colors.blue,
-              width: 2,
-            ),
-          );
-        }
+      }
+      
+      // Add line from last point to first point if more than 2 points
+      if (_capturedPoints.length > 2) {
+        _polylines.add(
+          Polyline(
+            polylineId: const PolylineId('closing_line'),
+            points: [_capturedPoints.last, _capturedPoints.first],
+            color: Colors.blue,
+            width: 2,
+            patterns: [PatternItem.dash(15), PatternItem.gap(5)],
+          ),
+        );
       }
     }
   }
@@ -260,6 +272,7 @@ class _MapPageState extends State<MapPage> {
     setState(() {
       _walkMode = true;
       _isWalking = false;
+      _showCaptureButton = true; // Show capture button immediately
       _walkPath.clear();
       _walkDistance = 0.0;
       _walkStartPoint = _currentLocation;
@@ -357,13 +370,16 @@ class _MapPageState extends State<MapPage> {
   }
 
   void _showSaveDialog() {
-    if (_capturedPoints.length != maxPoints) {
-      _showErrorNotification('Complete all 4 points first!');
+    if (_capturedPoints.length < 3) {
+      _showErrorNotification('At least 3 points are required to save an area!');
       return;
     }
 
     double totalArea = _calculatePolygonArea(_capturedPoints);
     double perimeter = _calculatePerimeter(_capturedPoints);
+    
+    // Auto-close any open info windows
+    _mapController?.showMarkerInfoWindow(const MarkerId(''));
 
     showDialog(
       context: context,
@@ -401,7 +417,7 @@ class _MapPageState extends State<MapPage> {
                           'Area:', '${totalArea.toStringAsFixed(2)} m²'),
                       _buildDetailRow(
                           'Perimeter:', '${perimeter.toStringAsFixed(2)} m'),
-                      _buildDetailRow('Points:', '$maxPoints corners'),
+                      _buildDetailRow('Points:', '${_capturedPoints.length} corners'),
                       _buildDetailRow('Walk Distance:',
                           '${_walkDistance.toStringAsFixed(1)} m'),
                     ],
@@ -436,7 +452,7 @@ class _MapPageState extends State<MapPage> {
                 ),
                 const SizedBox(height: 16),
 
-                const Text('📍 Corner Points', style: TextStyle(
+                const Text('📍 Captured Points', style: TextStyle(
                     fontWeight: FontWeight.bold, fontSize: 16)),
                 const SizedBox(height: 8),
                 Container(
@@ -499,12 +515,47 @@ class _MapPageState extends State<MapPage> {
   Future<void> _saveAreaToDatabase(String name, String description, double area,
       double perimeter) async {
     try {
-      // Show loading indicator
+      // Close the save dialog first
+      Navigator.of(context).pop();
+
+      // Show a more elegant loading overlay
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(),
+        builder: (context) => Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Saving your land area...',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${area.toStringAsFixed(2)} m²',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       );
 
@@ -546,14 +597,31 @@ class _MapPageState extends State<MapPage> {
       }
 
       _showSuccessNotification(
-          'Area saved successfully! ${area.toStringAsFixed(2)} m²');
+          '✅ Area saved successfully! ${area.toStringAsFixed(2)} m²');
 
-      // Navigate to SavedPointsPage immediately
+      // Wait a moment for the success message to be visible
+      await Future.delayed(const Duration(milliseconds: 800));
+
+      // Navigate to SavedPointsPage with a smooth transition
       if (mounted) {
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (context) => const SavedPointsPage(),
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                const SavedPointsPage(),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+              const begin = Offset(1.0, 0.0);
+              const end = Offset.zero;
+              const curve = Curves.easeInOut;
+
+              var tween =
+                  Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+              var offsetAnimation = animation.drive(tween);
+
+              return SlideTransition(position: offsetAnimation, child: child);
+            },
+            transitionDuration: const Duration(milliseconds: 300),
           ),
         );
       }
@@ -736,6 +804,8 @@ class _MapPageState extends State<MapPage> {
       _capturedPoints.clear();
       _markers.clear();
       _polylines.clear();
+      _showCaptureButton = false;
+      _walkMode = false;
     });
     _showSuccessNotification('All points cleared!');
   }
@@ -904,25 +974,30 @@ class _MapPageState extends State<MapPage> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       // Capture Point Button (only during walk mode)
-                      if (_walkMode)
-                        _buildCompactButton(
-                          heroTag: "addPoint",
-                          onPressed: _addPointDuringWalk,
-                          icon: const Icon(Icons.add_location,
-                              color: Colors.white, size: 16),
-                          label: 'Capture',
-                          backgroundColor: Colors.deepOrange,
-                        ),
-
-                      // Save Button (only when 4 points completed)
-                      if (_capturedPoints.length == maxPoints)
-                        _buildCompactButton(
-                          heroTag: "saveButton",
-                          onPressed: _showSaveDialog,
-                          icon: const Icon(Icons.save,
-                              color: Colors.white, size: 16),
-                          label: 'Save Area',
-                          backgroundColor: Colors.green[600]!,
+                      if (_showCaptureButton)
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Save Button (shown after first point is captured)
+                            if (_capturedPoints.isNotEmpty)
+                              _buildCompactButton(
+                                heroTag: "saveButton",
+                                onPressed: _showSaveDialog,
+                                icon: const Icon(Icons.save,
+                                    color: Colors.white, size: 16),
+                                label: 'Save',
+                                backgroundColor: Colors.green[600]!,
+                              ),
+                            // Capture Button
+                            _buildCompactButton(
+                              heroTag: "addPoint",
+                              onPressed: _addPointDuringWalk,
+                              icon: const Icon(Icons.add_location,
+                                  color: Colors.white, size: 16),
+                              label: 'Capture',
+                              backgroundColor: Colors.deepOrange,
+                            ),
+                          ],
                         ),
 
                       // Walk Mode Toggle
@@ -1001,7 +1076,7 @@ class _MapPageState extends State<MapPage> {
                               ),
                               const SizedBox(width: 3),
                               Text(
-                                '${_capturedPoints.length}/$maxPoints${_capturedPoints.length == maxPoints ? ' ✅' : ''}',
+                                '${_capturedPoints.length}/99999${_capturedPoints.length == 99999 ? ' ✅' : ''}',
                                 style: const TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
