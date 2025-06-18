@@ -234,6 +234,113 @@ abstract class AppLocalizations {
   String get cameraNotAvailable;
 
   String get routeNotFound;
+
+  // Map & Walk Mode
+  String get walkMode;
+
+  String get startWalk;
+
+  String get stopWalk;
+
+  String get capturePoint;
+
+  String get walkDistance;
+
+  String get points;
+
+  String get pointsCaptured;
+
+  String get pointCapture;
+
+  String get area;
+
+  String get perimeter;
+
+  String get areaName;
+
+  String get areaNameRequired;
+
+  String get pleaseEnterAreaName;
+
+  String get description;
+
+  String get optional;
+
+  String get capturedPoints;
+
+  String get saveArea;
+
+  String get savingArea;
+
+  String get areaSavedSuccessfully;
+
+  String get walkModeStarted;
+
+  String get walkModeStopped;
+
+  String get highAccuracyGPS;
+
+  String get tapCaptureToAddPoints;
+
+  String get minimumDistance;
+
+  String get distanceWalked;
+
+  String get normalView;
+
+  String get satelliteView;
+
+  String get pointMustBeAway;
+
+  String get moveAtLeast;
+
+  String get fromLastPoint;
+
+  String get pointTooClose;
+
+  String get lowGPSAccuracy;
+
+  String get moveToOpenArea;
+
+  String get gettingBetterGPS;
+
+  String get pointCapturedSuccessfully;
+
+  String get distanceFromLastPoint;
+
+  String get navigatingToPoint;
+
+  String get allPointsCleared;
+
+  String get currentPoints;
+
+  String get pointsAdded;
+
+  String get noPointsCaptured;
+
+  String get clearAll;
+
+  String get viewPoints;
+
+  String get navigateTo;
+
+  String get meters;
+
+  String get squareMeters;
+
+  String get corners;
+
+  String get atLeastThreePoints;
+
+  String get areaSummary;
+
+  String get walkStarted;
+
+  String get unableToDetermineLocation;
+
+  String get gpsError;
+
+  String get pleaseCheckLocationSettings;
 }
 
 class _AppLocalizationsDelegate
@@ -566,6 +673,168 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get routeNotFound => 'Route not found';
+
+  @override
+  String get walkMode => 'Walk Mode';
+
+  @override
+  String get startWalk => 'Start Walk';
+
+  @override
+  String get stopWalk => 'Stop Walk';
+
+  @override
+  String get capturePoint => 'Capture Point';
+
+  @override
+  String get walkDistance => 'Walk Distance';
+
+  @override
+  String get points => 'Points';
+
+  @override
+  String get pointsCaptured => 'Points Captured';
+
+  @override
+  String get pointCapture => 'Point Capture';
+
+  @override
+  String get area => 'Area';
+
+  @override
+  String get perimeter => 'Perimeter';
+
+  @override
+  String get areaName => 'Area Name';
+
+  @override
+  String get areaNameRequired => 'Area Name Required';
+
+  @override
+  String get pleaseEnterAreaName => 'Please enter the area name';
+
+  @override
+  String get description => 'Description';
+
+  @override
+  String get optional => 'Optional';
+
+  @override
+  String get capturedPoints => 'Captured Points';
+
+  @override
+  String get saveArea => 'Save Area';
+
+  @override
+  String get savingArea => 'Saving Area';
+
+  @override
+  String get areaSavedSuccessfully => 'Area saved successfully';
+
+  @override
+  String get walkModeStarted => 'Walk mode started';
+
+  @override
+  String get walkModeStopped => 'Walk mode stopped';
+
+  @override
+  String get highAccuracyGPS => 'High accuracy GPS enabled';
+
+  @override
+  String get tapCaptureToAddPoints => 'Tap "Capture" to add points';
+
+  @override
+  String get minimumDistance => 'Minimum distance';
+
+  @override
+  String get distanceWalked => 'Distance walked';
+
+  @override
+  String get normalView => 'Normal View';
+
+  @override
+  String get satelliteView => 'Satellite View';
+
+  @override
+  String get pointMustBeAway => 'Point must be at least';
+
+  @override
+  String get moveAtLeast => 'Move at least';
+
+  @override
+  String get fromLastPoint => 'from the last point';
+
+  @override
+  String get pointTooClose => 'Point too close to point';
+
+  @override
+  String get lowGPSAccuracy => 'Low GPS accuracy';
+
+  @override
+  String get moveToOpenArea => 'Move to a clearer area with open sky view';
+
+  @override
+  String get gettingBetterGPS => 'Getting better GPS fix... Please wait';
+
+  @override
+  String get pointCapturedSuccessfully => 'Point captured successfully';
+
+  @override
+  String get distanceFromLastPoint => 'Distance from last point';
+
+  @override
+  String get navigatingToPoint => 'Navigating to point';
+
+  @override
+  String get allPointsCleared => 'All points and paths have been cleared';
+
+  @override
+  String get currentPoints => 'Current Points';
+
+  @override
+  String get pointsAdded => 'points added';
+
+  @override
+  String get noPointsCaptured => 'No points were captured';
+
+  @override
+  String get clearAll => 'Clear All';
+
+  @override
+  String get viewPoints => 'View Points';
+
+  @override
+  String get navigateTo => 'Navigate To';
+
+  @override
+  String get meters => 'meters';
+
+  @override
+  String get squareMeters => 'square meters';
+
+  @override
+  String get corners => 'corners';
+
+  @override
+  String get atLeastThreePoints =>
+      'At least 3 points are required to save an area';
+
+  @override
+  String get areaSummary => 'Area Summary';
+
+  @override
+  String get walkStarted => 'Walk started';
+
+  @override
+  String get unableToDetermineLocation =>
+      'Unable to determine current location';
+
+  @override
+  String get gpsError => 'GPS error occurred';
+
+  @override
+  String get pleaseCheckLocationSettings =>
+      'Please check your location settings';
 }
 
 class AppLocalizationsTa extends AppLocalizations {
@@ -858,6 +1127,168 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get routeNotFound => 'பாதை கண்டுபிடிக்கப்படவில்லை';
+
+  // Map & Walk Mode
+  @override
+  String get walkMode => 'நடை முறை';
+
+  @override
+  String get startWalk => 'நடை தொடங்கு';
+
+  @override
+  String get stopWalk => 'நடை நிறுத்து';
+
+  @override
+  String get capturePoint => 'புள்ளி பிடி';
+
+  @override
+  String get walkDistance => 'நடை தூரம்';
+
+  @override
+  String get points => 'புள்ளிகள்';
+
+  @override
+  String get pointsCaptured => 'புள்ளிகள் பிடிக்கப்பட்டன';
+
+  @override
+  String get pointCapture => 'புள்ளி பிடிப்பு';
+
+  @override
+  String get area => 'பகுதி';
+
+  @override
+  String get perimeter => 'சுற்றளவு';
+
+  @override
+  String get areaName => 'பகுதி பெயர்';
+
+  @override
+  String get areaNameRequired => 'பகுதி பெயர் தேவை';
+
+  @override
+  String get pleaseEnterAreaName => 'தயவுசெய்து பகுதி பெயரை உள்ளிடவும்';
+
+  @override
+  String get description => 'விவரணம்';
+
+  @override
+  String get optional => 'விருப்பம்';
+
+  @override
+  String get capturedPoints => 'பிடிக்கப்பட்ட புள்ளிகள்';
+
+  @override
+  String get saveArea => 'பகுதி சேமி';
+
+  @override
+  String get savingArea => 'பகுதி சேமிக்கிறது';
+
+  @override
+  String get areaSavedSuccessfully => 'பகுதி வெற்றிகரமாக சேமிக்கப்பட்டது';
+
+  @override
+  String get walkModeStarted => 'நடை முறை தொடங்கியது';
+
+  @override
+  String get walkModeStopped => 'நடை முறை நிறுத்தப்பட்டது';
+
+  @override
+  String get highAccuracyGPS => 'உயர் துல்லிய GPS இயக்கப்பட்டது';
+
+  @override
+  String get tapCaptureToAddPoints => 'புள்ளிகள் சேர்க்க "பிடி"யை தட்டவும்';
+
+  @override
+  String get minimumDistance => 'குறைந்தபட்ச தூரம்';
+
+  @override
+  String get distanceWalked => 'நடந்த தூரம்';
+
+  @override
+  String get normalView => 'சாதாரண காட்சி';
+
+  @override
+  String get satelliteView => 'செயற்கைக்கோள் காட்சி';
+
+  @override
+  String get pointMustBeAway => 'புள்ளி குறைந்தபட்சம்';
+
+  @override
+  String get moveAtLeast => 'குறைந்தபட்சம் நகர்த்தவும்';
+
+  @override
+  String get fromLastPoint => 'கடைசி புள்ளியிலிருந்து';
+
+  @override
+  String get pointTooClose => 'புள்ளி மிக அருகில் உள்ளது';
+
+  @override
+  String get lowGPSAccuracy => 'குறைந்த GPS துல்லியம்';
+
+  @override
+  String get moveToOpenArea => 'திறந்த வானுடன் தெளிவான பகுதிக்கு செல்லவும்';
+
+  @override
+  String get gettingBetterGPS => 'சிறந்த GPS பெறுகிறது... காத்திருக்கவும்';
+
+  @override
+  String get pointCapturedSuccessfully => 'புள்ளி வெற்றிகரமாக பிடிக்கப்பட்டது';
+
+  @override
+  String get distanceFromLastPoint => 'கடைசி புள்ளியிலிருந்து தூரம்';
+
+  @override
+  String get navigatingToPoint => 'புள்ளிக்கு வழிநடத்துகிறது';
+
+  @override
+  String get allPointsCleared => 'அனைத்து புள்ளிகளும் பாதைகளும் அழிக்கப்பட்டன';
+
+  @override
+  String get currentPoints => 'தற்போதைய புள்ளிகள்';
+
+  @override
+  String get pointsAdded => 'புள்ளிகள் சேர்க்கப்பட்டன';
+
+  @override
+  String get noPointsCaptured => 'புள்ளிகள் பிடிக்கப்படவில்லை';
+
+  @override
+  String get clearAll => 'அனைத்தையும் அழி';
+
+  @override
+  String get viewPoints => 'புள்ளிகள் பார்';
+
+  @override
+  String get navigateTo => 'வழிநடத்து';
+
+  @override
+  String get meters => 'மீட்டர்கள்';
+
+  @override
+  String get squareMeters => 'சதுர மீட்டர்கள்';
+
+  @override
+  String get corners => 'மூலைகள்';
+
+  @override
+  String get atLeastThreePoints => 'பகுதி சேமிக்க குறைந்தது 3 புள்ளிகள் தேவை';
+
+  @override
+  String get areaSummary => 'பகுதி சுருக்கம்';
+
+  @override
+  String get walkStarted => 'நடை தொடங்கியது';
+
+  @override
+  String get unableToDetermineLocation =>
+      'தற்போதைய இடத்தை தீர்மானிக்க முடியவில்லை';
+
+  @override
+  String get gpsError => 'GPS பிழை ஏற்பட்டது';
+
+  @override
+  String get pleaseCheckLocationSettings =>
+      'தயவுசெய்து உங்கள் இட அமைப்புகளை சரிபார்க்கவும்';
 }
 
 class AppLocalizationsHi extends AppLocalizations {
@@ -1150,6 +1581,170 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get routeNotFound => 'रूट नहीं मिला';
+
+  // Map & Walk Mode
+  @override
+  String get walkMode => 'पैदल मोड';
+
+  @override
+  String get startWalk => 'चलना शुरू करें';
+
+  @override
+  String get stopWalk => 'चलना बंद करें';
+
+  @override
+  String get capturePoint => 'बिंदु कैप्चर करें';
+
+  @override
+  String get walkDistance => 'चलने की दूरी';
+
+  @override
+  String get points => 'बिंदु';
+
+  @override
+  String get pointsCaptured => 'बिंदु कैप्चर किए गए';
+
+  @override
+  String get pointCapture => 'बिंदु कैप्चर';
+
+  @override
+  String get area => 'क्षेत्र';
+
+  @override
+  String get perimeter => 'परिधि';
+
+  @override
+  String get areaName => 'क्षेत्र का नाम';
+
+  @override
+  String get areaNameRequired => 'क्षेत्र का नाम आवश्यक है';
+
+  @override
+  String get pleaseEnterAreaName => 'कृपया क्षेत्र का नाम दर्ज करें';
+
+  @override
+  String get description => 'विवरण';
+
+  @override
+  String get optional => 'वैकल्पिक';
+
+  @override
+  String get capturedPoints => 'कैप्चर किए गए बिंदु';
+
+  @override
+  String get saveArea => 'क्षेत्र सहेजें';
+
+  @override
+  String get savingArea => 'क्षेत्र सहेजा जा रहा है';
+
+  @override
+  String get areaSavedSuccessfully => 'क्षेत्र सफलतापूर्वक सहेजा गया';
+
+  @override
+  String get walkModeStarted => 'पैदल मोड शुरू किया गया';
+
+  @override
+  String get walkModeStopped => 'पैदल मोड बंद किया गया';
+
+  @override
+  String get highAccuracyGPS => 'उच्च सटीकता GPS सक्षम';
+
+  @override
+  String get tapCaptureToAddPoints =>
+      'बिंदु जोड़ने के लिए "कैप्चर" पर टैप करें';
+
+  @override
+  String get minimumDistance => 'न्यूनतम दूरी';
+
+  @override
+  String get distanceWalked => 'चली गई दूरी';
+
+  @override
+  String get normalView => 'सामान्य दृश्य';
+
+  @override
+  String get satelliteView => 'उपग्रह दृश्य';
+
+  @override
+  String get pointMustBeAway => 'बिंदु कम से कम';
+
+  @override
+  String get moveAtLeast => 'कम से कम हिलाएं';
+
+  @override
+  String get fromLastPoint => 'अंतिम बिंदु से';
+
+  @override
+  String get pointTooClose => 'बिंदु बहुत करीब है';
+
+  @override
+  String get lowGPSAccuracy => 'कम GPS सटीकता';
+
+  @override
+  String get moveToOpenArea => 'खुले आसमान के साथ स्पष्ट क्षेत्र में जाएं';
+
+  @override
+  String get gettingBetterGPS =>
+      'बेहतर GPS प्राप्त हो रहा है... कृपया प्रतीक्षा करें';
+
+  @override
+  String get pointCapturedSuccessfully => 'बिंदु सफलतापूर्वक कैप्चर किया गया';
+
+  @override
+  String get distanceFromLastPoint => 'अंतिम बिंदु से दूरी';
+
+  @override
+  String get navigatingToPoint => 'बिंदु की ओर नेविगेट कर रहा है';
+
+  @override
+  String get allPointsCleared => 'सभी बिंदु और पथ साफ कर दिए गए हैं';
+
+  @override
+  String get currentPoints => 'वर्तमान बिंदु';
+
+  @override
+  String get pointsAdded => 'बिंदु जोड़े गए';
+
+  @override
+  String get noPointsCaptured => 'कोई बिंदु कैप्चर नहीं किया गया';
+
+  @override
+  String get clearAll => 'सभी साफ करें';
+
+  @override
+  String get viewPoints => 'बिंदु देखें';
+
+  @override
+  String get navigateTo => 'नेविगेट करें';
+
+  @override
+  String get meters => 'मीटर';
+
+  @override
+  String get squareMeters => 'वर्ग मीटर';
+
+  @override
+  String get corners => 'कोने';
+
+  @override
+  String get atLeastThreePoints =>
+      'क्षेत्र सहेजने के लिए कम से कम 3 बिंदु आवश्यक हैं';
+
+  @override
+  String get areaSummary => 'क्षेत्र सारांश';
+
+  @override
+  String get walkStarted => 'चलना शुरू किया गया';
+
+  @override
+  String get unableToDetermineLocation =>
+      'वर्तमान स्थान निर्धारित करने में असमर्थ';
+
+  @override
+  String get gpsError => 'GPS त्रुटि हुई';
+
+  @override
+  String get pleaseCheckLocationSettings => 'कृपया अपनी स्थान सेटिंग्स जांचें';
 }
 
 class AppLocalizationsTe extends AppLocalizations {
@@ -1445,6 +2040,172 @@ class AppLocalizationsTe extends AppLocalizations {
 
   @override
   String get routeNotFound => 'రూట్ కనుగొనబడలేదు';
+
+  // Map & Walk Mode
+  @override
+  String get walkMode => 'వాక్ మోడ్';
+
+  @override
+  String get startWalk => 'వాక్ ప్రారంభించు';
+
+  @override
+  String get stopWalk => 'వాక్ ఆపు';
+
+  @override
+  String get capturePoint => 'పాయింట్ క్యాప్చర్ చేయి';
+
+  @override
+  String get walkDistance => 'వాక్ దూరం';
+
+  @override
+  String get points => 'పాయింట్లు';
+
+  @override
+  String get pointsCaptured => 'పాయింట్లు క్యాప్చర్ చేయబడ్డాయి';
+
+  @override
+  String get pointCapture => 'పాయింట్ క్యాప్చర్';
+
+  @override
+  String get area => 'ప్రాంతం';
+
+  @override
+  String get perimeter => 'చుట్టుకొలత';
+
+  @override
+  String get areaName => 'ప్రాంత పేరు';
+
+  @override
+  String get areaNameRequired => 'ప్రాంత పేరు అవసరం';
+
+  @override
+  String get pleaseEnterAreaName => 'దయచేసి ప్రాంత పేరు నమోదు చేయండి';
+
+  @override
+  String get description => 'వివరణ';
+
+  @override
+  String get optional => 'ఐచ్ఛికం';
+
+  @override
+  String get capturedPoints => 'క్యాప్చర్ చేసిన పాయింట్లు';
+
+  @override
+  String get saveArea => 'ప్రాంతం సేవ్ చేయి';
+
+  @override
+  String get savingArea => 'ప్రాంతం సేవ్ చేస్తోంది';
+
+  @override
+  String get areaSavedSuccessfully => 'ప్రాంతం విజయవంతంగా సేవ్ చేయబడింది';
+
+  @override
+  String get walkModeStarted => 'వాక్ మోడ్ ప్రారంభమైంది';
+
+  @override
+  String get walkModeStopped => 'వాక్ మోడ్ ఆపబడింది';
+
+  @override
+  String get highAccuracyGPS => 'అధిక ఖచ్చితత్వ GPS ప్రారంభించబడింది';
+
+  @override
+  String get tapCaptureToAddPoints =>
+      'పాయింట్లు జోడించడానికి "క్యాప్చర్" నొక్కండి';
+
+  @override
+  String get minimumDistance => 'కనిష్ట దూరం';
+
+  @override
+  String get distanceWalked => 'నడిచిన దూరం';
+
+  @override
+  String get normalView => 'సాధారణ దృశ్యం';
+
+  @override
+  String get satelliteView => 'ఉపగ్రహ దృశ్యం';
+
+  @override
+  String get pointMustBeAway => 'పాయింట్ కనీసం';
+
+  @override
+  String get moveAtLeast => 'కనీసం కదిలించు';
+
+  @override
+  String get fromLastPoint => 'చివరి పాయింట్ నుండి';
+
+  @override
+  String get pointTooClose => 'పాయింట్ చాలా దగ్గరగా ఉంది';
+
+  @override
+  String get lowGPSAccuracy => 'తక్కువ GPS ఖచ్చితత్వం';
+
+  @override
+  String get moveToOpenArea => 'తెరిచిన ఆకాశంతో స్పష్టమైన ప్రాంతానికి వెళ్లండి';
+
+  @override
+  String get gettingBetterGPS => 'మెరుగైన GPS పొందుతోంది... దయచేసి వేచి ఉండండి';
+
+  @override
+  String get pointCapturedSuccessfully =>
+      'పాయింట్ విజయవంతంగా క్యాప్చర్ చేయబడింది';
+
+  @override
+  String get distanceFromLastPoint => 'చివరి పాయింట్ నుండి దూరం';
+
+  @override
+  String get navigatingToPoint => 'పాయింట్‌కు నావిగేట్ చేస్తోంది';
+
+  @override
+  String get allPointsCleared =>
+      'అన్ని పాయింట్లు మరియు మార్గాలు క్లియర్ చేయబడ్డాయి';
+
+  @override
+  String get currentPoints => 'ప్రస్తుత పాయింట్లు';
+
+  @override
+  String get pointsAdded => 'పాయింట్లు జోడించబడ్డాయి';
+
+  @override
+  String get noPointsCaptured => 'పాయింట్లు క్యాప్చర్ చేయబడలేదు';
+
+  @override
+  String get clearAll => 'అన్నీ క్లియర్ చేయి';
+
+  @override
+  String get viewPoints => 'పాయింట్లు చూడు';
+
+  @override
+  String get navigateTo => 'నావిగేట్ చేయి';
+
+  @override
+  String get meters => 'మీటర్లు';
+
+  @override
+  String get squareMeters => 'చదరపు మీటర్లు';
+
+  @override
+  String get corners => 'మూలలు';
+
+  @override
+  String get atLeastThreePoints =>
+      'ప్రాంతం సేవ్ చేయడానికి కనీసం 3 పాయింట్లు అవసరం';
+
+  @override
+  String get areaSummary => 'ప్రాంత సారాంశం';
+
+  @override
+  String get walkStarted => 'వాక్ ప్రారంభమైంది';
+
+  @override
+  String get unableToDetermineLocation =>
+      'ప్రస్తుత స్థానాన్ని నిర్ధారించలేకపోయింది';
+
+  @override
+  String get gpsError => 'GPS లోపం సంభవించింది';
+
+  @override
+  String get pleaseCheckLocationSettings =>
+      'దయచేసి మీ స్థాన సెట్టింగులను తనిఖీ చేయండి';
 }
 
 class AppLocalizationsMl extends AppLocalizations {
@@ -1737,6 +2498,172 @@ class AppLocalizationsMl extends AppLocalizations {
 
   @override
   String get routeNotFound => 'റൂട്ട് കണ്ടെത്തിയില്ല';
+
+  // Map & Walk Mode
+  @override
+  String get walkMode => 'നടക്കൽ മോഡ്';
+
+  @override
+  String get startWalk => 'നടക്കൽ ആരംഭിക്കുക';
+
+  @override
+  String get stopWalk => 'നടക്കൽ നിർത്തുക';
+
+  @override
+  String get capturePoint => 'പോയിന്റ് ക്യാപ്ചർ ചെയ്യുക';
+
+  @override
+  String get walkDistance => 'നടക്കൽ ദൂരം';
+
+  @override
+  String get points => 'പോയിന്റുകൾ';
+
+  @override
+  String get pointsCaptured => 'പോയിന്റുകൾ ക്യാപ്ചർ ചെയ്തു';
+
+  @override
+  String get pointCapture => 'പോയിന്റ് ക്യാപ്ചർ';
+
+  @override
+  String get area => 'പ്രദേശം';
+
+  @override
+  String get perimeter => 'ചുറ്റളവ്';
+
+  @override
+  String get areaName => 'പ്രദേശത്തിന്റെ പേര്';
+
+  @override
+  String get areaNameRequired => 'പ്രദേശത്തിന്റെ പേര് ആവശ്യമാണ്';
+
+  @override
+  String get pleaseEnterAreaName => 'ദയവായി പ്രദേശത്തിന്റെ പേര് നൽകുക';
+
+  @override
+  String get description => 'വിവരണം';
+
+  @override
+  String get optional => 'ഐച്ഛികം';
+
+  @override
+  String get capturedPoints => 'ക്യാപ്ചർ ചെയ്ത പോയിന്റുകൾ';
+
+  @override
+  String get saveArea => 'പ്രദേശം സേവ് ചെയ്യുക';
+
+  @override
+  String get savingArea => 'പ്രദേശം സേവ് ചെയ്യുന്നു';
+
+  @override
+  String get areaSavedSuccessfully => 'പ്രദേശം വിജയകരമായി സേവ് ചെയ്തു';
+
+  @override
+  String get walkModeStarted => 'നടക്കൽ മോഡ് ആരംഭിച്ചു';
+
+  @override
+  String get walkModeStopped => 'നടക്കൽ മോഡ് നിർത്തി';
+
+  @override
+  String get highAccuracyGPS => 'ഉയർന്ന കൃത്യത GPS പ്രവർത്തനക്ഷമമാക്കി';
+
+  @override
+  String get tapCaptureToAddPoints =>
+      'പോയിന്റുകൾ ചേർക്കാൻ "ക്യാപ്ചർ" ടാപ് ചെയ്യുക';
+
+  @override
+  String get minimumDistance => 'കുറഞ്ഞ ദൂരം';
+
+  @override
+  String get distanceWalked => 'നടന്ന ദൂരം';
+
+  @override
+  String get normalView => 'സാധാരണ കാഴ്ച';
+
+  @override
+  String get satelliteView => 'ഉപഗ്രഹ കാഴ്ച';
+
+  @override
+  String get pointMustBeAway => 'പോയിന്റ് കുറഞ്ഞത്';
+
+  @override
+  String get moveAtLeast => 'കുറഞ്ഞത് നീക്കുക';
+
+  @override
+  String get fromLastPoint => 'അവസാന പോയിന്റിൽ നിന്ന്';
+
+  @override
+  String get pointTooClose => 'പോയിന്റ് വളരെ അടുത്താണ്';
+
+  @override
+  String get lowGPSAccuracy => 'കുറഞ്ഞ GPS കൃത്യത';
+
+  @override
+  String get moveToOpenArea =>
+      'തുറന്ന ആകാശമുള്ള വ്യക്തമായ പ്രദേശത്തേക്ക് നീങ്ങുക';
+
+  @override
+  String get gettingBetterGPS =>
+      'മികച്ച GPS ലഭിക്കുന്നു... ദയവായി കാത്തിരിക്കുക';
+
+  @override
+  String get pointCapturedSuccessfully => 'പോയിന്റ് വിജയകരമായി ക്യാപ്ചർ ചെയ്തു';
+
+  @override
+  String get distanceFromLastPoint => 'അവസാന പോയിന്റിൽ നിന്നുള്ള ദൂരം';
+
+  @override
+  String get navigatingToPoint => 'പോയിന്റിലേക്ക് നാവിഗേറ്റ് ചെയ്യുന്നു';
+
+  @override
+  String get allPointsCleared => 'എല്ലാ പോയിന്റുകളും പാതകളും ക്ലിയർ ചെയ്തു';
+
+  @override
+  String get currentPoints => 'നിലവിലുള്ള പോയിന്റുകൾ';
+
+  @override
+  String get pointsAdded => 'പോയിന്റുകൾ ചേർത്തു';
+
+  @override
+  String get noPointsCaptured => 'പോയിന്റുകൾ ക്യാപ്ചർ ചെയ്തിട്ടില്ല';
+
+  @override
+  String get clearAll => 'എല്ലാം ക്ലിയർ ചെയ്യുക';
+
+  @override
+  String get viewPoints => 'പോയിന്റുകൾ കാണുക';
+
+  @override
+  String get navigateTo => 'നാവിഗേറ്റ് ചെയ്യുക';
+
+  @override
+  String get meters => 'മീറ്റർ';
+
+  @override
+  String get squareMeters => 'ചതുരശ്ര മീറ്റർ';
+
+  @override
+  String get corners => 'കോണുകൾ';
+
+  @override
+  String get atLeastThreePoints =>
+      'പ്രദേശം സേവ് ചെയ്യാൻ കുറഞ്ഞത് 3 പോയിന്റുകൾ ആവശ്യമാണ്';
+
+  @override
+  String get areaSummary => 'പ്രദേശ സംഗ്രഹം';
+
+  @override
+  String get walkStarted => 'നടക്കൽ ആരംഭിച്ചു';
+
+  @override
+  String get unableToDetermineLocation =>
+      'നിലവിലുള്ള സ്ഥാനം നിർണ്ണയിക്കാനായില്ല';
+
+  @override
+  String get gpsError => 'GPS പിശക് സംഭവിച്ചു';
+
+  @override
+  String get pleaseCheckLocationSettings =>
+      'ദയവായി നിങ്ങളുടെ ലൊക്കേഷൻ സെറ്റിംഗുകൾ പരിശോധിക്കുക';
 }
 
 class AppLocalizationsKn extends AppLocalizations {
@@ -2033,4 +2960,169 @@ class AppLocalizationsKn extends AppLocalizations {
 
   @override
   String get routeNotFound => 'ಮಾರ್ಗ ಕಂಡುಬಂದಿಲ್ಲ';
+
+  // Map & Walk Mode
+  @override
+  String get walkMode => 'ನಡಿಗೆ ಮೋಡ್';
+
+  @override
+  String get startWalk => 'ನಡಿಗೆ ಪ್ರಾರಂಭಿಸಿ';
+
+  @override
+  String get stopWalk => 'ನಡಿಗೆ ನಿಲ್ಲಿಸಿ';
+
+  @override
+  String get capturePoint => 'ಪಾಯಿಂಟ್ ಕ್ಯಾಪ್ಚರ್ ಮಾಡಿ';
+
+  @override
+  String get walkDistance => 'ನಡಿಗೆ ದೂರ';
+
+  @override
+  String get points => 'ಪಾಯಿಂಟ್‌ಗಳು';
+
+  @override
+  String get pointsCaptured => 'ಪಾಯಿಂಟ್‌ಗಳನ್ನು ಕ್ಯಾಪ್ಚರ್ ಮಾಡಲಾಗಿದೆ';
+
+  @override
+  String get pointCapture => 'ಪಾಯಿಂಟ್ ಕ್ಯಾಪ್ಚರ್';
+
+  @override
+  String get area => 'ಪ್ರದೇಶ';
+
+  @override
+  String get perimeter => 'ಪರಿಧಿ';
+
+  @override
+  String get areaName => 'ಪ್ರದೇಶದ ಹೆಸರು';
+
+  @override
+  String get areaNameRequired => 'ಪ್ರದೇಶದ ಹೆಸರು ಅಗತ್ಯವಿದೆ';
+
+  @override
+  String get pleaseEnterAreaName => 'ದಯವಿಟ್ಟು ಪ್ರದೇಶದ ಹೆಸರನ್ನು ನಮೂದಿಸಿ';
+
+  @override
+  String get description => 'ವಿವರಣೆ';
+
+  @override
+  String get optional => 'ಐಚ್ಛಿಕ';
+
+  @override
+  String get capturedPoints => 'ಕ್ಯಾಪ್ಚರ್ ಮಾಡಿದ ಪಾಯಿಂಟ್‌ಗಳು';
+
+  @override
+  String get saveArea => 'ಪ್ರದೇಶವನ್ನು ಉಳಿಸಿ';
+
+  @override
+  String get savingArea => 'ಪ್ರದೇಶವನ್ನು ಉಳಿಸಲಾಗುತ್ತಿದೆ';
+
+  @override
+  String get areaSavedSuccessfully => 'ಪ್ರದೇಶವನ್ನು ಯಶಸ್ವಿಯಾಗಿ ಉಳಿಸಲಾಗಿದೆ';
+
+  @override
+  String get walkModeStarted => 'ನಡಿಗೆ ಮೋಡ್ ಪ್ರಾರಂಭವಾಗಿದೆ';
+
+  @override
+  String get walkModeStopped => 'ನಡಿಗೆ ಮೋಡ್ ನಿಲ್ಲಿಸಲಾಗಿದೆ';
+
+  @override
+  String get highAccuracyGPS => 'ಉನ್ನತ ನಿಖರತೆ GPS ಸಕ್ರಿಯಗೊಳಿಸಲಾಗಿದೆ';
+
+  @override
+  String get tapCaptureToAddPoints =>
+      'ಪಾಯಿಂಟ್‌ಗಳನ್ನು ಸೇರಿಸಲು "ಕ್ಯಾಪ್ಚರ್" ಟ್ಯಾಪ್ ಮಾಡಿ';
+
+  @override
+  String get minimumDistance => 'ಕನಿಷ್ಠ ದೂರ';
+
+  @override
+  String get distanceWalked => 'ನಡೆದ ದೂರ';
+
+  @override
+  String get normalView => 'ಸಾಮಾನ್ಯ ನೋಟ';
+
+  @override
+  String get satelliteView => 'ಉಪಗ್ರಹ ನೋಟ';
+
+  @override
+  String get pointMustBeAway => 'ಪಾಯಿಂಟ್ ಕನಿಷ್ಠ';
+
+  @override
+  String get moveAtLeast => 'ಕನಿಷ್ಠ ಚಲಿಸಿ';
+
+  @override
+  String get fromLastPoint => 'ಕೊನೆಯ ಪಾಯಿಂಟ್‌ನಿಂದ';
+
+  @override
+  String get pointTooClose => 'ಪಾಯಿಂಟ್ ತುಂಬಾ ಹತ್ತಿರದಲ್ಲಿದೆ';
+
+  @override
+  String get lowGPSAccuracy => 'ಕಡಿಮೆ GPS ನಿಖರತೆ';
+
+  @override
+  String get moveToOpenArea => 'ತೆರೆದ ಆಕಾಶದೊಂದಿಗೆ ಸ್ಪಷ್ಟ ಪ್ರದೇಶಕ್ಕೆ ಹೋಗಿ';
+
+  @override
+  String get gettingBetterGPS => 'ಉತ್ತಮ GPS ಪಡೆಯುತ್ತಿದೆ... ದಯವಿಟ್ಟು ಕಾಯಿರಿ';
+
+  @override
+  String get pointCapturedSuccessfully => 'ಪಾಯಿಂಟ್ ಯಶಸ್ವಿಯಾಗಿ ಕ್ಯಾಪ್ಚರ್ ಆಗಿದೆ';
+
+  @override
+  String get distanceFromLastPoint => 'ಕೊನೆಯ ಪಾಯಿಂಟ್‌ನಿಂದ ದೂರ';
+
+  @override
+  String get navigatingToPoint => 'ಪಾಯಿಂಟ್‌ಗೆ ನ್ಯಾವಿಗೇಟ್ ಮಾಡುತ್ತಿದೆ';
+
+  @override
+  String get allPointsCleared =>
+      'ಎಲ್ಲಾ ಪಾಯಿಂಟ್‌ಗಳು ಮತ್ತು ಮಾರ್ಗಗಳನ್ನು ತೆರವುಗೊಳಿಸಲಾಗಿದೆ';
+
+  @override
+  String get currentPoints => 'ಪ್ರಸ್ತುತ ಪಾಯಿಂಟ್‌ಗಳು';
+
+  @override
+  String get pointsAdded => 'ಪಾಯಿಂಟ್‌ಗಳನ್ನು ಸೇರಿಸಲಾಗಿದೆ';
+
+  @override
+  String get noPointsCaptured => 'ಯಾವುದೇ ಪಾಯಿಂಟ್‌ಗಳನ್ನು ಕ್ಯಾಪ್ಚರ್ ಮಾಡಿಲ್ಲ';
+
+  @override
+  String get clearAll => 'ಎಲ್ಲವನ್ನೂ ತೆರವುಗೊಳಿಸಿ';
+
+  @override
+  String get viewPoints => 'ಪಾಯಿಂಟ್‌ಗಳನ್ನು ನೋಡಿ';
+
+  @override
+  String get navigateTo => 'ನ್ಯಾವಿಗೇಟ್ ಮಾಡಿ';
+
+  @override
+  String get meters => 'ಮೀಟರ್‌ಗಳು';
+
+  @override
+  String get squareMeters => 'ಚದರ ಮೀಟರ್‌ಗಳು';
+
+  @override
+  String get corners => 'ಮೂಲೆಗಳು';
+
+  @override
+  String get atLeastThreePoints =>
+      'ಪ್ರದೇಶವನ್ನು ಉಳಿಸಲು ಕನಿಷ್ಠ 3 ಪಾಯಿಂಟ್‌ಗಳು ಬೇಕಾಗುತ್ತವೆ';
+
+  @override
+  String get areaSummary => 'ಪ್ರದೇಶದ ಸಾರಾಂಶ';
+
+  @override
+  String get walkStarted => 'ನಡಿಗೆ ಪ್ರಾರಂಭವಾಗಿದೆ';
+
+  @override
+  String get unableToDetermineLocation =>
+      'ಪ್ರಸ್ತುತ ಸ್ಥಾನವನ್ನು ನಿರ್ಧರಿಸಲು ಸಾಧ್ಯವಾಗಿಲ್ಲ';
+
+  @override
+  String get gpsError => 'GPS ದೋಷ ಸಂಭವಿಸಿದೆ';
+
+  @override
+  String get pleaseCheckLocationSettings =>
+      'ದಯವಿಟ್ಟು ನಿಮ್ಮ ಸ್ಥಾನ ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಪರಿಶೀಲಿಸಿ';
 }

@@ -1,8 +1,13 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/foundation.dart' show Factory;
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:geolocator_android/geolocator_android.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'dart:async';
 import '../../../../core/services/database_service.dart';
 import '../../../../core/models/land_point.dart';
@@ -16,7 +21,7 @@ class MapPage extends StatefulWidget {
 }
 
 class _MapPageState extends State<MapPage> {
-  final int maxPoints = 4;  // Maximum number of points allowed for the polygon
+  // Removed maxPoints limit to allow unlimited points
   GoogleMapController? _mapController;
   LatLng? _currentLocation;
   bool _isLoading = true;
@@ -30,9 +35,14 @@ class _MapPageState extends State<MapPage> {
   LatLng? _lastCaptureLocation;
   DateTime? _lastMoveTime;
   // Removed maxPoints limit to allow unlimited points
-  static const double movementThreshold = 1.5; // meters - more accurate
-  static const int stationaryTimeout = 3; // seconds - more responsive
-  static const double captureThreshold = 3.0; // meters - more precise
+  // Enhanced accuracy settings for walking mode
+  static const double movementThreshold = 0.5; // meters - high precision movement threshold
+  static const int stationaryTimeout = 1; // seconds - more responsive updates
+  static const double captureThreshold = 2.0; // meters - precise point capture
+  static const double minimumPointDistance = 1.5; // meters - minimum distance between points
+  static const double maxAcceptableAccuracy = 5.0; // meters - maximum acceptable accuracy
+  static const int minSamplesForAccuracy = 3; // Minimum samples for accuracy check
+  static const int maxSamplesForAveraging = 5; // Max samples to average for position
 
   // Points and Tracking
   final Set<Marker> _markers = {};
@@ -44,6 +54,10 @@ class _MapPageState extends State<MapPage> {
 
   // GPS Tracking
   StreamSubscription<Position>? _positionStream;
+  double? _currentAccuracy;
+  bool _isHighAccuracy = false;
+  final List<LatLng> _positionSamples = [];
+  double _averageAccuracy = 0.0;
 
   // Database Service
   final DatabaseService _databaseService = DatabaseService();
@@ -100,24 +114,34 @@ class _MapPageState extends State<MapPage> {
   }
 
   void _onMapTap(LatLng position) {
-    if (!_walkMode) return;
+    if (!_walkMode) return; // Only allow adding points in walk mode
     
-    if (_capturedPoints.length >= maxPoints) {
-      _showErrorNotification('Maximum of $maxPoints points reached for this area');
-      return;
-    }
-    
-    // Check if trying to capture at same location as any previous point
+    // Check minimum distance from all existing points
     for (int i = 0; i < _capturedPoints.length; i++) {
-      double distanceFromExistingPoint = Geolocator.distanceBetween(
+      double distance = Geolocator.distanceBetween(
         _capturedPoints[i].latitude,
         _capturedPoints[i].longitude,
         position.latitude,
         position.longitude,
       );
 
-      if (distanceFromExistingPoint < 5) { // 5 meters threshold
-        _showErrorNotification('Point too close to an existing point');
+      if (distance < minimumPointDistance) {
+        _showErrorNotification('Point must be at least ${minimumPointDistance}m away from other points');
+        return;
+      }
+    }
+    
+    // Check minimum distance from all existing points
+    for (int i = 0; i < _capturedPoints.length; i++) {
+      double distance = Geolocator.distanceBetween(
+        _capturedPoints[i].latitude,
+        _capturedPoints[i].longitude,
+        position.latitude,
+        position.longitude,
+      );
+
+      if (distance < minimumPointDistance) {
+        _showErrorNotification('Point must be at least ${minimumPointDistance}m away from other points');
         return;
       }
     }
@@ -135,58 +159,144 @@ class _MapPageState extends State<MapPage> {
       return;
     }
 
-    // Check if we've reached the maximum number of points
-    if (_capturedPoints.length >= maxPoints) {
-      _showErrorNotification('Maximum of $maxPoints points reached for this area');
+    // Check GPS accuracy before capturing point
+    if (_currentAccuracy == null || _currentAccuracy! > maxAcceptableAccuracy) {
+      _showErrorNotification(
+        'Low GPS accuracy (${_currentAccuracy?.toStringAsFixed(1) ?? 'unknown'}m). '
+        'Move to a clearer area with open sky view.'
+      );
       return;
     }
-
-    // Check if trying to capture at same location as any previous point
+    
+    // Check if we have enough position samples for accuracy
+    if (_positionSamples.length < minSamplesForAccuracy) {
+      _showErrorNotification('Getting better GPS fix... Please wait');
+      return;
+    }
+    
+    // Calculate average position from recent samples
+    double avgLat = 0.0;
+    double avgLng = 0.0;
+    for (var pos in _positionSamples) {
+      avgLat += pos.latitude;
+      avgLng += pos.longitude;
+    }
+    avgLat /= _positionSamples.length;
+    avgLng /= _positionSamples.length;
+    final averagedPosition = LatLng(avgLat, avgLng);
+    
+    // Check minimum distance from last point
+    if (_capturedPoints.isNotEmpty) {
+      double distanceFromLast = Geolocator.distanceBetween(
+        _capturedPoints.last.latitude,
+        _capturedPoints.last.longitude,
+        averagedPosition.latitude,
+        averagedPosition.longitude,
+      );
+      
+      if (distanceFromLast < minimumPointDistance) {
+        _showErrorNotification('Move at least ${minimumPointDistance}m from the last point');
+        return;
+      }
+      
+      // Check if point forms a valid angle with previous points
+      if (_capturedPoints.length > 1) {
+        final prevPoint1 = _capturedPoints[_capturedPoints.length - 2];
+        final prevPoint2 = _capturedPoints.last;
+        
+        final angle = _calculateAngle(prevPoint1, prevPoint2, averagedPosition);
+        if (angle < 30.0) {
+          _showErrorNotification('Sharp angle detected. Adjust your path.');
+          return;
+        }
+      }
+    }
+    
+    // Check minimum distance from all other points
     for (int i = 0; i < _capturedPoints.length; i++) {
-      double distanceFromExistingPoint = Geolocator.distanceBetween(
+      double distanceFromPoint = Geolocator.distanceBetween(
         _capturedPoints[i].latitude,
         _capturedPoints[i].longitude,
-        _currentLocation!.latitude,
-        _currentLocation!.longitude,
+        averagedPosition.latitude,
+        averagedPosition.longitude,
       );
-
-      if (distanceFromExistingPoint < 5) { // 5 meters threshold
-        _showErrorNotification('Point too close to an existing point');
+      
+      if (distanceFromPoint < minimumPointDistance) {
+        _showErrorNotification('Point too close to point ${i + 1} (${distanceFromPoint.toStringAsFixed(1)}m)');
         return;
       }
     }
     
-    // Save the point without changing zoom
-    _savePointDirectly(_currentLocation!);
-
-    // Auto-zoom to the new point
-    _mapController?.animateCamera(
-      CameraUpdate.newLatLngZoom(_currentLocation!, 19.0),
-    );
-
-    setState(() {
-      _lastCaptureLocation = _currentLocation;
-    });
+    // Save the averaged position
+    _savePointDirectly(averagedPosition);
     
-    _showSuccessNotification('Point ${_capturedPoints.length} captured!');
+    // Clear position samples after capturing a point
+    _positionSamples.clear();
+    
+    // Provide haptic feedback
+    try {
+      HapticFeedback.mediumImpact();
+    } catch (e) {
+      debugPrint('Haptic feedback not available: $e');
+    }
+    
+    // Show point details with accuracy information
+    String pointInfo = '✅ Point ${_capturedPoints.length} captured!\n'
+                      '• Accuracy: ${_currentAccuracy!.toStringAsFixed(1)}m';
+    
+    if (_capturedPoints.length > 1) {
+      double distanceFromLast = Geolocator.distanceBetween(
+        _capturedPoints[_capturedPoints.length - 2].latitude,
+        _capturedPoints[_capturedPoints.length - 2].longitude,
+        averagedPosition.latitude,
+        averagedPosition.longitude,
+      );
+      pointInfo += '\n• Distance: ${distanceFromLast.toStringAsFixed(1)}m';
+    }
+    
+    _showSuccessNotification(pointInfo);
+  }
+  
+  double _calculateAngle(LatLng a, LatLng b, LatLng c) {
+    // Calculate angle at point b between a and c
+    final angle1 = atan2(c.latitude - b.latitude, c.longitude - b.longitude);
+    final angle2 = atan2(a.latitude - b.latitude, a.longitude - b.longitude);
+    var angle = (angle1 - angle2).abs() * (180.0 / 3.141592653589793);
+    return angle > 180.0 ? 360.0 - angle : angle;
+  }
+
+  // Helper method to safely show marker info window
+  void _showInfoWindow(String markerId) async {
+    if (markerId.isEmpty) {
+      debugPrint('Cannot show info window: Empty markerId');
+      return;
+    }
+    
+    try {
+      await _mapController?.showMarkerInfoWindow(MarkerId(markerId));
+    } catch (e) {
+      debugPrint('Error showing info window for marker $markerId: $e');
+    }
   }
 
   void _savePointDirectly(LatLng position) {
+    // Generate marker ID before modifying _capturedPoints to ensure correct numbering
+    final markerId = 'point_${_capturedPoints.length + 1}';
+    
     setState(() {
       _capturedPoints.add(position);
       _lastCaptureLocation = position;
 
       _markers.add(
         Marker(
-          markerId: MarkerId('point_${_capturedPoints.length}'),
+          markerId: MarkerId(markerId),
           position: position,
-          icon: BitmapDescriptor.defaultMarkerWithHue(
-              BitmapDescriptor.hueGreen),
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
           infoWindow: InfoWindow(
             title: '📍 Point ${_capturedPoints.length}',
-            snippet: '${position.latitude.toStringAsFixed(6)}, ${position
-                .longitude.toStringAsFixed(6)}',
+            snippet: '${position.latitude.toStringAsFixed(6)}, ${position.longitude.toStringAsFixed(6)}',
           ),
+          onTap: () => _showInfoWindow(markerId),
         ),
       );
 
@@ -330,108 +440,246 @@ class _MapPageState extends State<MapPage> {
       }
     }
   }
-  void _startWalkMode() {
-    if (_currentLocation == null) return;
+  void _startWalkMode() async {
+    if (_currentLocation == null) {
+      _showErrorNotification('Unable to determine current location');
+      return;
+    }
+    
+    // Request high accuracy location
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      _showErrorNotification('Please enable location services');
+      return;
+    }
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission != LocationPermission.whileInUse && 
+          permission != LocationPermission.always) {
+        _showErrorNotification('Location permissions are required for walk mode');
+        return;
+      }
+    }
+
+    // Clear any existing data
     setState(() {
-      _walkMode = true;
-      _isWalking = false;
-      _showCaptureButton = true; // Show capture button immediately
-      _walkPath.clear();
-      _walkDistance = 0.0;
-      _walkStartPoint = _currentLocation;
-      _lastPosition = _currentLocation;
-      _lastMoveTime = DateTime.now();
-      _lastCaptureLocation = null;
-      
-      // Clear any existing points when starting a new walk
       _capturedPoints.clear();
       _markers.clear();
       _polylines.clear();
+      _walkPath.clear();
+      _positionSamples.clear();
+      _walkDistance = 0.0;
+      _lastPosition = null;
+      _lastMoveTime = DateTime.now();
+      _lastCaptureLocation = null;
+      _isHighAccuracy = false;
+      _averageAccuracy = 0.0;
+      _walkMode = true;
+      _isWalking = true;
+      _showCaptureButton = true;
     });
-    
-    // Zoom closely to current location when walk mode starts
+
+    // Set initial walk path point
+    _walkPath.add(_currentLocation!);
+    _walkStartPoint = _currentLocation!;
+
+    // Zoom to current location with optimal settings
     _mapController?.animateCamera(
       CameraUpdate.newCameraPosition(
         CameraPosition(
           target: _currentLocation!,
-          zoom: 90.0,  // Increased zoom level for closer view
-          bearing: 0.0,  // Reset bearing for straight view
-          tilt: 0.0,    // Reset tilt for top-down view
+          zoom: 19.0,
+          bearing: 0.0,
+          tilt: 45.0,
         ),
       ),
-      duration: const Duration(milliseconds: 500),  // Smooth animation
+      duration: const Duration(milliseconds: 500),
     );
-    
-    _showSuccessNotification('Walk mode started! Tap the capture button to mark points.');
+
+    // Start high accuracy position stream
+    _positionStream?.cancel();
     _positionStream = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
+      locationSettings: AndroidSettings(
         accuracy: LocationAccuracy.bestForNavigation,
         distanceFilter: 0,
+        intervalDuration: const Duration(milliseconds: 500),
+        forceLocationManager: true,
       ),
     ).listen((Position position) {
-      if (!_walkMode) return;
-      LatLng newPosition = LatLng(position.latitude, position.longitude);
-      if (_lastPosition != null) {
-        double distanceMoved = Geolocator.distanceBetween(
+      if (!_walkMode || !mounted) return;
+      
+      final newPosition = LatLng(position.latitude, position.longitude);
+      final accuracy = position.accuracy;
+
+      // Update position samples for accuracy calculation
+      _positionSamples.add(newPosition);
+      if (_positionSamples.length > maxSamplesForAveraging) {
+        _positionSamples.removeAt(0);
+      }
+
+      // Calculate averaged position for better accuracy
+      LatLng effectivePosition = newPosition;
+      if (_positionSamples.length >= minSamplesForAccuracy) {
+        double avgLat =
+            _positionSamples.map((p) => p.latitude).reduce((a, b) => a + b) /
+                _positionSamples.length;
+        double avgLng =
+            _positionSamples.map((p) => p.longitude).reduce((a, b) => a + b) /
+                _positionSamples.length;
+        effectivePosition = LatLng(avgLat, avgLng);
+      }
+      
+      final isAccurate = accuracy <= maxAcceptableAccuracy;
+      
+      setState(() {
+        _currentAccuracy = accuracy;
+        _isHighAccuracy = isAccurate;
+        _currentLocation = effectivePosition;
+      });
+
+      // Update walk path and distance
+      if (_lastPosition != null && isAccurate) {
+        final distanceMoved = Geolocator.distanceBetween(
           _lastPosition!.latitude,
           _lastPosition!.longitude,
-          newPosition.latitude,
-          newPosition.longitude,
+          effectivePosition.latitude,
+          effectivePosition.longitude,
         );
-        if (distanceMoved >= movementThreshold) {
+
+        if (distanceMoved > movementThreshold) {
           setState(() {
             _isWalking = true;
             _lastMoveTime = DateTime.now();
             _walkDistance += distanceMoved;
-            _walkPath.add(newPosition);
-            _lastPosition = newPosition;
-            _currentLocation = newPosition;
-          });
-          _mapController?.animateCamera(
-            CameraUpdate.newLatLng(newPosition),
-          );
-          _updateWalkPolyline();
-        } else {
-          if (_lastMoveTime != null) {
-            int secondsSinceLastMove = DateTime
-                .now()
-                .difference(_lastMoveTime!)
-                .inSeconds;
-            if (secondsSinceLastMove > stationaryTimeout && _isWalking) {
-              setState(() {
-                _isWalking = false;
-              });
+            _lastPosition = effectivePosition;
+
+            // Add to walk path
+            if (_walkPath.isEmpty || 
+                Geolocator.distanceBetween(
+                  _walkPath.last.latitude,
+                  _walkPath.last.longitude,
+                  effectivePosition.latitude,
+                  effectivePosition.longitude,
+                ) >= movementThreshold) {
+              _walkPath.add(effectivePosition);
+              _updateWalkPolyline();
             }
+          });
+
+          // Smooth camera tracking
+          if (_walkPath.length > 1) {
+            final bearing = _calculateBearing(
+                _walkPath[_walkPath.length - 2], effectivePosition);
+            _mapController?.animateCamera(
+              CameraUpdate.newCameraPosition(
+                CameraPosition(
+                  target: effectivePosition,
+                  zoom: 19.0,
+                  bearing: bearing,
+                  tilt: 45.0,
+                ),
+              ),
+            );
           }
         }
+      } else if (_lastPosition == null) {
+        setState(() {
+          _lastPosition = effectivePosition;
+          _walkPath.add(effectivePosition);
+        });
+        _updateWalkPolyline();
       }
+    }, onError: (error) {
+      debugPrint('GPS Error: $error');
+      _showErrorNotification(
+          'GPS error occurred. Please check your location settings.');
     });
+    
     _showSuccessNotification(
-        'Walk mode started! Move around and capture points.');
+      '🚶‍♂️ Walk mode started!\n'
+      '• High accuracy GPS enabled\n'
+      '• Tap "Capture" to add points\n'
+      '• Minimum distance: ${minimumPointDistance}m',
+    );
+  }
+  
+  double _calculateBearing(LatLng from, LatLng to) {
+    final lat1 = from.latitude * (3.141592653589793 / 180.0);
+    final lon1 = from.longitude * (3.141592653589793 / 180.0);
+    final lat2 = to.latitude * (3.141592653589793 / 180.0);
+    final lon2 = to.longitude * (3.141592653589793 / 180.0);
+    
+    final dLon = lon2 - lon1;
+    final y = sin(dLon) * cos(lat2);
+    final x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLon);
+    
+    double bearing = atan2(y, x) * (180.0 / 3.141592653589793);
+    return (bearing + 360) % 360;
   }
   void _stopWalkTracking() {
     _positionStream?.cancel();
+    
     setState(() {
       _walkMode = false;
       _isWalking = false;
       _lastCaptureLocation = null;
+      _isHighAccuracy = false;
+      _showCaptureButton = _capturedPoints.isNotEmpty;
     });
-    _markers.removeWhere((marker) => marker.markerId.value == 'walk_start');
-    _showSuccessNotification(
-        'Walk stopped! Distance: ${_walkDistance.toStringAsFixed(1)}m');
+
+    // Keep walk path polyline for reference
+    if (_walkPath.isNotEmpty) {
+      _updateWalkPolyline();
+    }
+
+    String walkSummary = 'Walk mode stopped!';
+    if (_walkDistance > 0) {
+      walkSummary +=
+          '\n• Distance walked: ${_walkDistance.toStringAsFixed(1)}m';
+    }
+    if (_capturedPoints.isNotEmpty) {
+      walkSummary += '\n• Points captured: ${_capturedPoints.length}';
+      walkSummary += '\n• Tap "Save" to save your area';
+    } else {
+      walkSummary += '\n• No points were captured';
+    }
+
+    _showSuccessNotification(walkSummary);
   }
   void _updateWalkPolyline() {
     if (_walkPath.length < 2) return;
+    
+    // Calculate total distance
+    double totalDistance = 0;
+    for (int i = 1; i < _walkPath.length; i++) {
+      totalDistance += Geolocator.distanceBetween(
+        _walkPath[i-1].latitude, 
+        _walkPath[i-1].longitude,
+        _walkPath[i].latitude,
+        _walkPath[i].longitude,
+      );
+    }
+    _walkDistance = totalDistance;
+    
     setState(() {
-      _polylines.removeWhere((polyline) =>
-      polyline.polylineId.value == 'walk_path');
+      _polylines.removeWhere((polyline) => 
+          polyline.polylineId.value == 'walk_path');
+      
       _polylines.add(
         Polyline(
           polylineId: const PolylineId('walk_path'),
-          points: _walkPath,
-          color: Colors.purple.withOpacity(0.7),
-          width: 2,
-          patterns: [PatternItem.dash(10), PatternItem.gap(5)],
+          points: List<LatLng>.from(_walkPath),
+          color: Colors.blue.withOpacity(0.7),
+          width: 5,
+          startCap: Cap.roundCap,
+          endCap: Cap.roundCap,
+          jointType: JointType.round,
+          patterns: [
+            PatternItem.dash(10),
+            PatternItem.gap(5),
+          ],
         ),
       );
     });
@@ -443,14 +691,14 @@ class _MapPageState extends State<MapPage> {
     }
     double totalArea = _calculatePolygonArea(_capturedPoints);
     double perimeter = _calculatePerimeter(_capturedPoints);
-    // Auto-close any open info windows
-    _mapController?.showMarkerInfoWindow(const MarkerId(''));
 
+    // Info windows will be automatically closed when the dialog appears
     showDialog(
       context: context,
       builder: (BuildContext context) {
         final TextEditingController nameController = TextEditingController();
         final TextEditingController descriptionController = TextEditingController();
+
         return AlertDialog(
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12)),
@@ -492,12 +740,14 @@ class _MapPageState extends State<MapPage> {
                   child: TextField(
                     controller: nameController,
                     decoration: InputDecoration(
-                      labelText: 'Area Name',
-                      hintText: 'Enter name for this area',
+                      labelText: 'Area Name *',
+                      hintText: 'Enter name for this area (required)',
                       border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8)),
                       contentPadding: const EdgeInsets.all(12),
+                      errorText: null,
                     ),
+                    textCapitalization: TextCapitalization.words,
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -505,13 +755,14 @@ class _MapPageState extends State<MapPage> {
                   child: TextField(
                     controller: descriptionController,
                     decoration: InputDecoration(
-                      labelText: 'Description',
-                      hintText: 'Enter description (optional)',
+                      labelText: 'Description (Optional)',
+                      hintText: 'Enter description',
                       border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8)),
                       contentPadding: const EdgeInsets.all(12),
                     ),
                     maxLines: 2,
+                    textCapitalization: TextCapitalization.sentences,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -557,9 +808,14 @@ class _MapPageState extends State<MapPage> {
             ),
             ElevatedButton(
               onPressed: () async {
-                await _saveAreaToDatabase(nameController.text.trim(),
-                    descriptionController.text.trim(), totalArea, perimeter);
+                String areaName = nameController.text.trim();
+                if (areaName.isEmpty) {
+                  _showErrorNotification('Please enter the area name');
+                  return;
+                }
                 Navigator.of(context).pop();
+                await _saveAreaToDatabase(areaName,
+                    descriptionController.text.trim(), totalArea, perimeter);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
@@ -577,9 +833,7 @@ class _MapPageState extends State<MapPage> {
   Future<void> _saveAreaToDatabase(String name, String description, double area,
       double perimeter) async {
     try {
-      // Close the save dialog first
-      Navigator.of(context).pop();
-      // Show a more elegant loading overlay
+      // Show loading dialog
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -608,7 +862,7 @@ class _MapPageState extends State<MapPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '${area.toStringAsFixed(2)} m²',
+                  '$name - ${area.toStringAsFixed(2)} m²',
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.grey[600],
@@ -619,24 +873,49 @@ class _MapPageState extends State<MapPage> {
           ),
         ),
       );
-      // Generate a unique area ID for all points in this area
+
+      // Generate a unique area ID
       final String areaId = 'area_${DateTime.now().millisecondsSinceEpoch}';
-      
-      // Save each point as a LandPoint to the database
+
+      // Create points data as a string for storage
+      List<String> pointsData = [];
       for (int i = 0; i < _capturedPoints.length; i++) {
         final point = _capturedPoints[i];
-        final landPoint = LandPoint(
-          id: '${areaId}_$i', // Use area ID + point index for unique ID
-          latitude: point.latitude,
-          longitude: point.longitude,
-          timestamp: DateTime.now(),
-          notes: name.isEmpty
-              ? 'Land Area $areaId - Point ${i + 1}'
-              : '$name (${areaId.substring(0, 6)}) - Point ${i + 1}\n$description',
-          tags: [areaId], // Store area ID as a tag for easy querying
-        );
-        await _databaseService.saveLandPoint(landPoint);
+        pointsData.add(
+            'Point ${i + 1}: ${point.latitude.toStringAsFixed(6)}, ${point.longitude.toStringAsFixed(6)}');
       }
+
+      // Create comprehensive notes with all area information
+      String detailedNotes = '''Area Name: $name
+Description: ${description.isNotEmpty ? description : 'No description'}
+Area: ${area.toStringAsFixed(2)} m²
+Perimeter: ${perimeter.toStringAsFixed(2)} m
+Walk Distance: ${_walkDistance.toStringAsFixed(1)} m
+Total Points: ${_capturedPoints.length}
+Date Captured: ${DateTime.now().toString().split('.')[0]}
+
+Points Captured:
+${pointsData.join('\n')}''';
+
+      // Save as a single area entry using the center point of the polygon
+      double centerLat =
+          _capturedPoints.map((p) => p.latitude).reduce((a, b) => a + b) /
+              _capturedPoints.length;
+      double centerLng =
+          _capturedPoints.map((p) => p.longitude).reduce((a, b) => a + b) /
+              _capturedPoints.length;
+
+      final landPoint = LandPoint(
+        id: areaId,
+        latitude: centerLat,
+        longitude: centerLng,
+        timestamp: DateTime.now(),
+        notes: detailedNotes,
+        tags: ['area', name.toLowerCase().replaceAll(' ', '_')],
+      );
+
+      await _databaseService.saveLandPoint(landPoint);
+
       // Clear the current points and reset the map
       setState(() {
         _capturedPoints.clear();
@@ -648,18 +927,23 @@ class _MapPageState extends State<MapPage> {
         _lastCaptureLocation = null;
         _walkMode = false;
         _isWalking = false;
+        _showCaptureButton = false;
       });
       _positionStream?.cancel();
-      // Hide loading indicator
+
+      // Hide loading dialog
       if (mounted) {
         Navigator.of(context).pop();
       }
+
+      // Show success message
       _showSuccessNotification(
-          '✅ Area saved successfully! ${area.toStringAsFixed(2)} m²');
+          '✅ Area "$name" saved successfully!\n${area.toStringAsFixed(2)} m² with ${_capturedPoints.length} points');
 
       // Wait a moment for the success message to be visible
-      await Future.delayed(const Duration(milliseconds: 800));
-      // Navigate to SavedPointsPage with a smooth transition
+      await Future.delayed(const Duration(milliseconds: 1000));
+
+      // Navigate to SavedPointsPage with smooth transition
       if (mounted) {
         Navigator.push(
           context,
@@ -683,11 +967,11 @@ class _MapPageState extends State<MapPage> {
         );
       }
     } catch (e) {
-      // Hide loading indicator if still showing
+      // Hide loading dialog if still showing
       if (mounted) {
         Navigator.of(context).pop();
       }
-      _showErrorNotification('Failed to save area: $e');
+      _showErrorNotification('Failed to save area: ${e.toString()}');
     }
   }
   void _toggleMapType() {
@@ -784,17 +1068,9 @@ class _MapPageState extends State<MapPage> {
               const Text('Current Points', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
               Text(
-                '${_capturedPoints.length}/$maxPoints points added',
+                '${_capturedPoints.length} points added',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
               ),
-              if (_capturedPoints.length == maxPoints) 
-                Padding(
-                  padding: const EdgeInsets.only(top: 4.0),
-                  child: Text(
-                    'Area complete! Tap "Save Area" to proceed.',
-                    style: TextStyle(color: Theme.of(context).primaryColor, fontSize: 14),
-                  ),
-                ),
             ],
           ),
           content: SizedBox(
@@ -872,13 +1148,21 @@ class _MapPageState extends State<MapPage> {
   }
   void _clearAllPoints() {
     setState(() {
-      _capturedPoints.clear();
       _markers.clear();
+      _capturedPoints.clear();
       _polylines.clear();
+      _walkPath.clear();
+      _walkDistance = 0.0;
       _showCaptureButton = false;
+      _isWalking = false;
       _walkMode = false;
+      _lastPosition = null;
+      _lastMoveTime = null;
+      _lastCaptureLocation = null;
+      _isHighAccuracy = false;
     });
-    _showSuccessNotification('All points cleared!');
+    _positionStream?.cancel();
+    _showSuccessNotification('All points and paths have been cleared');
   }
   Widget _buildCompactButton({
     required String heroTag,
@@ -960,6 +1244,37 @@ class _MapPageState extends State<MapPage> {
                   minMaxZoomPreference: const MinMaxZoomPreference(1.0, 25.0),
                   cameraTargetBounds: CameraTargetBounds.unbounded,
                 ),
+                // Point Counter - Top Center
+                if (_capturedPoints.isNotEmpty)
+                  Positioned(
+                    top: MediaQuery.of(context).padding.top + 12,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          'Points: ${_capturedPoints.length}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 // Map Type Toggle - Top Left (Google Maps style)
                 Positioned(
                   top: MediaQuery.of(context).padding.top + 12,
