@@ -26,15 +26,16 @@ class LandPointAdapter extends TypeAdapter<LandPoint> {
       imagePath: fields[6] as String?,
       analysis: fields[7] as LandAnalysis?,
       notes: fields[8] as String?,
-      tags: (fields[9] as List?)?.cast<String>() ?? const [],
-      isSynced: fields[10] as bool? ?? false,
+      tags: (fields[9] as List).cast<String>(),
+      isSynced: fields[10] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, LandPoint obj) {
     writer
-      ..writeByte(11)..writeByte(0)
+      ..writeByte(11)
+      ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
       ..write(obj.latitude)
@@ -64,9 +65,9 @@ class LandPointAdapter extends TypeAdapter<LandPoint> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-          other is LandPointAdapter &&
-              runtimeType == other.runtimeType &&
-              typeId == other.typeId;
+      other is LandPointAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
 }
 
 class LandAnalysisAdapter extends TypeAdapter<LandAnalysis> {
@@ -95,7 +96,8 @@ class LandAnalysisAdapter extends TypeAdapter<LandAnalysis> {
   @override
   void write(BinaryWriter writer, LandAnalysis obj) {
     writer
-      ..writeByte(9)..writeByte(0)
+      ..writeByte(9)
+      ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
       ..write(obj.vegetationPercentage)
@@ -121,9 +123,9 @@ class LandAnalysisAdapter extends TypeAdapter<LandAnalysis> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-          other is LandAnalysisAdapter &&
-              runtimeType == other.runtimeType &&
-              typeId == other.typeId;
+      other is LandAnalysisAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
 }
 
 class DetectedFeatureAdapter extends TypeAdapter<DetectedFeature> {
@@ -147,7 +149,8 @@ class DetectedFeatureAdapter extends TypeAdapter<DetectedFeature> {
   @override
   void write(BinaryWriter writer, DetectedFeature obj) {
     writer
-      ..writeByte(4)..writeByte(0)
+      ..writeByte(4)
+      ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
       ..write(obj.confidence)
@@ -163,7 +166,7 @@ class DetectedFeatureAdapter extends TypeAdapter<DetectedFeature> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-          other is DetectedFeatureAdapter &&
-              runtimeType == other.runtimeType &&
-              typeId == other.typeId;
+      other is DetectedFeatureAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
 }

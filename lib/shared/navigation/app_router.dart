@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
-import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/camera/presentation/pages/camera_page.dart';
-import '../../features/map/presentation/pages/map_page.dart';
-import '../../features/settings/presentation/pages/settings_page.dart';
+import 'main_navigation.dart';
 
 class AppRouter {
   static const String home = '/';
   static const String camera = '/camera';
   static const String map = '/map';
+  static const String landMeasure = '/land-measure';
   static const String settings = '/settings';
+  static const String savedPoints = '/saved-points';
   static const String landPointDetails = '/land-point-details';
   static const String imageAnalysis = '/image-analysis';
 
@@ -16,7 +16,7 @@ class AppRouter {
     switch (settings.name) {
       case '/':
         return MaterialPageRoute(
-          builder: (_) => const HomePage(),
+          builder: (_) => const MainNavigation(),
         );
       case '/camera':
         return MaterialPageRoute(
@@ -24,16 +24,20 @@ class AppRouter {
         );
       case '/map':
         return MaterialPageRoute(
-          builder: (_) => const MapPage(),
+          builder: (_) => const MainNavigation(initialIndex: 0),
         );
+
       case '/settings':
         return MaterialPageRoute(
-          builder: (_) => const SettingsPage(),
+          builder: (_) => const MainNavigation(initialIndex: 2),
+        );
+      case '/saved-points':
+        return MaterialPageRoute(
+          builder: (_) => const MainNavigation(initialIndex: 1),
         );
       default:
         return MaterialPageRoute(
-          builder: (_) =>
-          const Scaffold(
+          builder: (_) => const Scaffold(
             body: Center(
               child: Text('Route not found'),
             ),
@@ -51,10 +55,18 @@ class AppRouter {
   }
 
   static void navigateToMap(BuildContext context) {
-    Navigator.pushNamed(context, map);
+    Navigator.pushNamedAndRemoveUntil(context, map, (route) => false);
+  }
+
+  static void navigateToLandMeasure(BuildContext context) {
+    Navigator.pushNamed(context, landMeasure);
   }
 
   static void navigateToSettings(BuildContext context) {
-    Navigator.pushNamed(context, settings);
+    Navigator.pushNamedAndRemoveUntil(context, settings, (route) => false);
+  }
+
+  static void navigateToSavedPoints(BuildContext context) {
+    Navigator.pushNamedAndRemoveUntil(context, savedPoints, (route) => false);
   }
 }

@@ -89,17 +89,12 @@ class AppTheme {
         margin: const EdgeInsets.all(8),
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: primaryLightColor.withOpacity(0.1),
+        backgroundColor: primaryLightColor.withAlpha(0x1A),
         labelStyle: const TextStyle(color: primaryColor),
         side: const BorderSide(color: primaryColor),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
         ),
-      ),
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: primaryColor,
-        foregroundColor: Colors.white,
-        elevation: 4,
       ),
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         type: BottomNavigationBarType.fixed,
@@ -107,6 +102,14 @@ class AppTheme {
         unselectedItemColor: Colors.grey,
         backgroundColor: Colors.white,
         elevation: 8,
+      ),
+      snackBarTheme: const SnackBarThemeData(
+        behavior: SnackBarBehavior.fixed,
+        backgroundColor: primaryColor,
+        contentTextStyle: TextStyle(color: Colors.white),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+        ),
       ),
       textTheme: const TextTheme(
         displayLarge: TextStyle(
@@ -240,17 +243,12 @@ class AppTheme {
         margin: const EdgeInsets.all(8),
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: primaryLightColor.withOpacity(0.2),
+        backgroundColor: primaryLightColor.withAlpha(0x33),
         labelStyle: const TextStyle(color: primaryLightColor),
         side: const BorderSide(color: primaryLightColor),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
         ),
-      ),
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: primaryLightColor,
-        foregroundColor: Colors.white,
-        elevation: 4,
       ),
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         type: BottomNavigationBarType.fixed,
@@ -258,6 +256,14 @@ class AppTheme {
         unselectedItemColor: Colors.grey,
         backgroundColor: Color(0xFF1E1E1E),
         elevation: 8,
+      ),
+      snackBarTheme: const SnackBarThemeData(
+        behavior: SnackBarBehavior.fixed,
+        backgroundColor: primaryLightColor,
+        contentTextStyle: TextStyle(color: Colors.black),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+        ),
       ),
       textTheme: const TextTheme(
         displayLarge: TextStyle(
